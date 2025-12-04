@@ -173,6 +173,27 @@ ClassMethod ValidateNode(pData, pSchema, pContext As JSONSchema.Context) As %Boo
             }
         }
         
+        // Schema combinators (apply to any data type)
+        If $IsObject(pSchema) && pSchema.%IsDefined("allOf") {
+            Set tAllOfValid = ##class(JSONSchema.Keyword.Combinator).ValidateAllOf(pData, pSchema.allOf, pContext)
+            Set tValid = tValid && tAllOfValid
+        }
+        
+        If $IsObject(pSchema) && pSchema.%IsDefined("anyOf") {
+            Set tAnyOfValid = ##class(JSONSchema.Keyword.Combinator).ValidateAnyOf(pData, pSchema.anyOf, pContext)
+            Set tValid = tValid && tAnyOfValid
+        }
+        
+        If $IsObject(pSchema) && pSchema.%IsDefined("oneOf") {
+            Set tOneOfValid = ##class(JSONSchema.Keyword.Combinator).ValidateOneOf(pData, pSchema.oneOf, pContext)
+            Set tValid = tValid && tOneOfValid
+        }
+        
+        If $IsObject(pSchema) && pSchema.%IsDefined("not") {
+            Set tNotValid = ##class(JSONSchema.Keyword.Combinator).ValidateNot(pData, pSchema.not, pContext)
+            Set tValid = tValid && tNotValid
+        }
+        
         // Process type keyword if present
         If $IsObject(pSchema) && pSchema.%IsDefined("type") {
             Set tTypeValue = pSchema.%Get("type")

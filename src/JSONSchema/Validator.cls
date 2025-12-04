@@ -257,6 +257,106 @@ ClassMethod ValidateNode(pData, pSchema, pContext As JSONSchema.Context) As %Boo
             }
         }
         
+        // Object validation keywords (only apply to object data)
+        If tDataType = "object" {
+            
+            // Track which properties have been validated by properties/patternProperties
+            Set tValidatedProps = ##class(%DynamicObject).%New()
+            
+            // Check required
+            If $IsObject(pSchema) && pSchema.%IsDefined("required") {
+                Set tRequiredValid = ##class(JSONSchema.Keyword.Object).ValidateRequired(pData, pSchema.required, pContext)
+                Set tValid = tValid && tRequiredValid
+            }
+            
+            // Check minProperties
+            If $IsObject(pSchema) && pSchema.%IsDefined("minProperties") {
+                Set tMinPropsValid = ##class(JSONSchema.Keyword.Object).ValidateMinProperties(pData, pSchema.minProperties, pContext)
+                Set tValid = tValid && tMinPropsValid
+            }
+            
+            // Check maxProperties
+            If $IsObject(pSchema) && pSchema.%IsDefined("maxProperties") {
+                Set tMaxPropsValid = ##class(JSONSchema.Keyword.Object).ValidateMaxProperties(pData, pSchema.maxProperties, pContext)
+                Set tValid = tValid && tMaxPropsValid
+            }
+            
+            // Check propertyNames
+            If $IsObject(pSchema) && pSchema.%IsDefined("propertyNames") {
+                Set tPropNamesValid = ##class(JSONSchema.Keyword.Object).ValidatePropertyNames(pData, pSchema.propertyNames, pContext)
+                Set tValid = tValid && tPropNamesValid
+            }
+            
+            // Check properties (validates and tracks covered properties)
+            If $IsObject(pSchema) && pSchema.%IsDefined("properties") {
+                Set tPropsSchema = pSchema.properties
+                Set tPropsIter = tPropsSchema.%GetIterator()
+                While tPropsIter.%GetNext(.tPropName, .tPropSchema) {
+                    // Mark this property as covered by 'properties'
+                    Do tValidatedProps.%Set(tPropName, 1)
+                    
+                    // If property exists in data, validate it
+                    If pData.%IsDefined(tPropName) {
+                        Set tPropValue = pData.%Get(tPropName)
+                        Do pContext.PushDataPath(tPropName)
+                        Set tPropValid = ..ValidateNode(tPropValue, tPropSchema, pContext)
+                        Do pContext.PopDataPath()
+                        Set tValid = tValid && tPropValid
+                    }
+                }
+            }
+            
+            // Check patternProperties
+            If $IsObject(pSchema) && pSchema.%IsDefined("patternProperties") {
+                Set tPatternProps = pSchema.patternProperties
+                Set tDataIter = pData.%GetIterator()
+                While tDataIter.%GetNext(.tDataPropName, .tDataPropValue) {
+                    // Check each pattern
+                    Set tPatternIter = tPatternProps.%GetIterator()
+                    While tPatternIter.%GetNext(.tPattern, .tPatternSchema) {
+                        If $Match(tDataPropName, tPattern) {
+                            // Mark this property as covered by patternProperties
+                            Do tValidatedProps.%Set(tDataPropName, 1)
+                            
+                            // Validate against pattern schema
+                            Do pContext.PushDataPath(tDataPropName)
+                            Set tPatternValid = ..ValidateNode(tDataPropValue, tPatternSchema, pContext)
+                            Do pContext.PopDataPath()
+                            Set tValid = tValid && tPatternValid
+                        }
+                    }
+                }
+            }
+            
+            // Check additionalProperties (for properties not covered above)
+            If $IsObject(pSchema) && pSchema.%IsDefined("additionalProperties") {
+                Set tAdditionalSchema = pSchema.additionalProperties
+                Set tDataIter = pData.%GetIterator()
+                While tDataIter.%GetNext(.tDataPropName, .tDataPropValue) {
+                    // Skip if property was validated by properties or patternProperties
+                    If tValidatedProps.%IsDefined(tDataPropName) {
+                        Continue
+                    }
+                    
+                    // This is an additional property
+                    If tAdditionalSchema = 0 || (tAdditionalSchema = "false") {
+                        // additionalProperties: false - reject additional properties
+                        Set tMessage = "Additional property '" _ tDataPropName _ "' is not allowed"
+                        Do pContext.AddError("additionalProperties", tMessage)
+                        Set tValid = 0
+                    }
+                    ElseIf $IsObject(tAdditionalSchema) {
+                        // additionalProperties: {schema} - validate against schema
+                        Do pContext.PushDataPath(tDataPropName)
+                        Set tAddValid = ..ValidateNode(tDataPropValue, tAdditionalSchema, pContext)
+                        Do pContext.PopDataPath()
+                        Set tValid = tValid && tAddValid
+                    }
+                    // additionalProperties: true (or anything else) - allow without validation
+                }
+            }
+        }
+        
         Quit
     }
     Catch ex {

@@ -223,6 +223,40 @@ ClassMethod ValidateNode(pData, pSchema, pContext As JSONSchema.Context) As %Boo
             }
         }
         
+        // Numeric validation keywords (only apply to numeric data)
+        If (tDataType = "number") || (tDataType = "integer") {
+            
+            // Check minimum
+            If $IsObject(pSchema) && pSchema.%IsDefined("minimum") {
+                Set tMinimumValid = ##class(JSONSchema.Keyword.Numeric).ValidateMinimum(pData, pSchema.minimum, pContext)
+                Set tValid = tValid && tMinimumValid
+            }
+            
+            // Check maximum
+            If $IsObject(pSchema) && pSchema.%IsDefined("maximum") {
+                Set tMaximumValid = ##class(JSONSchema.Keyword.Numeric).ValidateMaximum(pData, pSchema.maximum, pContext)
+                Set tValid = tValid && tMaximumValid
+            }
+            
+            // Check exclusiveMinimum
+            If $IsObject(pSchema) && pSchema.%IsDefined("exclusiveMinimum") {
+                Set tExMinValid = ##class(JSONSchema.Keyword.Numeric).ValidateExclusiveMinimum(pData, pSchema.exclusiveMinimum, pContext)
+                Set tValid = tValid && tExMinValid
+            }
+            
+            // Check exclusiveMaximum
+            If $IsObject(pSchema) && pSchema.%IsDefined("exclusiveMaximum") {
+                Set tExMaxValid = ##class(JSONSchema.Keyword.Numeric).ValidateExclusiveMaximum(pData, pSchema.exclusiveMaximum, pContext)
+                Set tValid = tValid && tExMaxValid
+            }
+            
+            // Check multipleOf
+            If $IsObject(pSchema) && pSchema.%IsDefined("multipleOf") {
+                Set tMultipleValid = ##class(JSONSchema.Keyword.Numeric).ValidateMultipleOf(pData, pSchema.multipleOf, pContext)
+                Set tValid = tValid && tMultipleValid
+            }
+        }
+        
         Quit
     }
     Catch ex {

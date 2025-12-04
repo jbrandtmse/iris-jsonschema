@@ -86,33 +86,62 @@ iris-jsonschema/
 │   │   ├── Validator.cls      # Main entry point
 │   │   ├── Context.cls        # Validation context
 │   │   └── Keyword/
-│   │       └── Type.cls       # Type keyword handler
+│   │       ├── Type.cls       # Type keyword validation
+│   │       ├── Enum.cls       # Enum keyword validation
+│   │       ├── Const.cls      # Const keyword validation
+│   │       ├── String.cls     # String keywords (minLength, maxLength, pattern, format)
+│   │       ├── Numeric.cls    # Numeric keywords (minimum, maximum, multipleOf, etc.)
+│   │       └── Object.cls     # Object keywords (properties, required, additionalProperties, etc.)
 │   └── Test/JSONSchema/
-│       └── TestValidator.cls  # Unit tests
+│       ├── TestValidator.cls        # Foundation tests
+│       ├── TestTypeValidation.cls   # Type keyword tests
+│       ├── TestEnumConst.cls        # Enum/Const tests
+│       ├── TestInputFormats.cls     # Input format tests
+│       ├── TestContext.cls          # Context tests
+│       ├── TestPathTracking.cls     # Path tracking tests
+│       ├── TestStringKeywords.cls   # String keyword tests
+│       ├── TestNumericKeywords.cls  # Numeric keyword tests
+│       └── TestObjectKeywords.cls   # Object keyword tests
 ├── docs/                      # Documentation
+│   ├── stories/               # User stories
+│   ├── qa/                    # QA gates and assessments
+│   ├── prd/                   # Product requirements
+│   └── architecture/          # Architecture documentation
 ├── module.xml                 # IPM package definition
 └── README.md
 ```
 
 ## Development Status
 
-### Completed
+### Epic 1: Foundation & Core Type Validation ✅ Complete
 - ✅ Story 1.1: Project Foundation with String Type Validation
+- ✅ Story 1.2: Complete Type Keyword Support
+- ✅ Story 1.3: Enum and Const Keywords
+- ✅ Story 1.4: Context Class and Error Path Tracking
+- ✅ Story 1.5: Flexible Input Handling
+- ✅ Story 1.6: Test File Organization (800-line limit)
 
-### Upcoming
-- 🔜 Epic 1: Foundation & Core Type Validation (remaining stories)
-- 🔜 Epic 2: Complete JSON Schema Draft-07 Support
-- 🔜 Epic 3: Web Application & Distribution
+### Epic 2: Complete JSON Schema Draft-07 Support 🔄 In Progress
+- ✅ Story 2.1: String Validation Keywords (minLength, maxLength, pattern, format)
+- ✅ Story 2.2: Numeric Validation Keywords (minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf)
+- ✅ Story 2.3: Object Validation Keywords (properties, required, additionalProperties, patternProperties, propertyNames, minProperties, maxProperties)
+- 🔜 Story 2.4: Array Validation Keywords
+- 🔜 Story 2.5: Schema Composition Keywords (allOf, anyOf, oneOf, not)
+- 🔜 Story 2.6: Conditional Schema Keywords (if/then/else)
+- 🔜 Story 2.7: Reference and Definition Keywords ($ref, definitions)
+
+### Epic 3: Web Application & Distribution
+- 🔜 Upcoming
 
 ## Testing
 
-Run the unit tests:
+Run the unit tests using MCP tools or IRIS terminal:
 
 ```objectscript
 Do ##class(%UnitTest.Manager).RunTest("Test.JSONSchema")
 ```
 
-Current test coverage: 13 tests, all passing.
+**Current test coverage: 183 tests, all passing.**
 
 ## Requirements
 

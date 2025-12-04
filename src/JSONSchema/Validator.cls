@@ -104,6 +104,18 @@ ClassMethod ValidateNode(pData, pSchema, pContext As JSONSchema.Context) As %Boo
             }
         }
         
+        // Check for enum keyword
+        If $IsObject(pSchema) && pSchema.%IsDefined("enum") {
+            Set tEnumValid = ##class(JSONSchema.Keyword.Enum).Validate(pData, pSchema.enum, pContext)
+            Set tValid = tValid && tEnumValid
+        }
+        
+        // Check for const keyword
+        If $IsObject(pSchema) && pSchema.%IsDefined("const") {
+            Set tConstValid = ##class(JSONSchema.Keyword.Const).Validate(pData, pSchema.const, pContext)
+            Set tValid = tValid && tConstValid
+        }
+        
         Quit
     }
     Catch ex {

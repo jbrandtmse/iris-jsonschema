@@ -194,6 +194,35 @@ ClassMethod ValidateNode(pData, pSchema, pContext As JSONSchema.Context) As %Boo
             Set tValid = tValid && tConstValid
         }
         
+        // String validation keywords (only apply to string data)
+        Set tDataType = ..GetJSONType(pData)
+        If tDataType = "string" {
+            
+            // Check minLength
+            If $IsObject(pSchema) && pSchema.%IsDefined("minLength") {
+                Set tMinLengthValid = ##class(JSONSchema.Keyword.String).ValidateMinLength(pData, pSchema.minLength, pContext)
+                Set tValid = tValid && tMinLengthValid
+            }
+            
+            // Check maxLength
+            If $IsObject(pSchema) && pSchema.%IsDefined("maxLength") {
+                Set tMaxLengthValid = ##class(JSONSchema.Keyword.String).ValidateMaxLength(pData, pSchema.maxLength, pContext)
+                Set tValid = tValid && tMaxLengthValid
+            }
+            
+            // Check pattern
+            If $IsObject(pSchema) && pSchema.%IsDefined("pattern") {
+                Set tPatternValid = ##class(JSONSchema.Keyword.String).ValidatePattern(pData, pSchema.pattern, pContext)
+                Set tValid = tValid && tPatternValid
+            }
+            
+            // Check format
+            If $IsObject(pSchema) && pSchema.%IsDefined("format") {
+                Set tFormatValid = ##class(JSONSchema.Keyword.String).ValidateFormat(pData, pSchema.format, pContext)
+                Set tValid = tValid && tFormatValid
+            }
+        }
+        
         Quit
     }
     Catch ex {

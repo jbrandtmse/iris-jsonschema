@@ -194,6 +194,21 @@ ClassMethod ValidateNode(pData, pSchema, pContext As JSONSchema.Context) As %Boo
             Set tValid = tValid && tNotValid
         }
         
+        // Conditional schemas (if/then/else)
+        If $IsObject(pSchema) && pSchema.%IsDefined("if") {
+            Set tIfThenElseValid = ##class(JSONSchema.Keyword.Conditional).ValidateIfThenElse(pData, pSchema, pContext)
+            Set tValid = tValid && tIfThenElseValid
+        }
+        
+        // Dependencies (property and schema dependencies)
+        If $IsObject(pSchema) && pSchema.%IsDefined("dependencies") {
+            // Only apply to object data
+            If $IsObject(pData) && pData.%IsA("%Library.DynamicObject") {
+                Set tDepsValid = ##class(JSONSchema.Keyword.Conditional).ValidateDependencies(pData, pSchema.dependencies, pContext)
+                Set tValid = tValid && tDepsValid
+            }
+        }
+        
         // Process type keyword if present
         If $IsObject(pSchema) && pSchema.%IsDefined("type") {
             Set tTypeValue = pSchema.%Get("type")
@@ -596,6 +611,42 @@ ClassMethod ValidateNodeWithType(pData, pSchema, pContext As JSONSchema.Context,
                 Do pContext.AddError("$schema", "Schema is false, no data is valid")
                 Set tValid = 0
                 Quit
+            }
+        }
+        
+        // Schema combinators (apply to any data type)
+        If $IsObject(pSchema) && pSchema.%IsDefined("allOf") {
+            Set tAllOfValid = ##class(JSONSchema.Keyword.Combinator).ValidateAllOf(pData, pSchema.allOf, pContext)
+            Set tValid = tValid && tAllOfValid
+        }
+        
+        If $IsObject(pSchema) && pSchema.%IsDefined("anyOf") {
+            Set tAnyOfValid = ##class(JSONSchema.Keyword.Combinator).ValidateAnyOf(pData, pSchema.anyOf, pContext)
+            Set tValid = tValid && tAnyOfValid
+        }
+        
+        If $IsObject(pSchema) && pSchema.%IsDefined("oneOf") {
+            Set tOneOfValid = ##class(JSONSchema.Keyword.Combinator).ValidateOneOf(pData, pSchema.oneOf, pContext)
+            Set tValid = tValid && tOneOfValid
+        }
+        
+        If $IsObject(pSchema) && pSchema.%IsDefined("not") {
+            Set tNotValid = ##class(JSONSchema.Keyword.Combinator).ValidateNot(pData, pSchema.not, pContext)
+            Set tValid = tValid && tNotValid
+        }
+        
+        // Conditional schemas (if/then/else)
+        If $IsObject(pSchema) && pSchema.%IsDefined("if") {
+            Set tIfThenElseValid = ##class(JSONSchema.Keyword.Conditional).ValidateIfThenElse(pData, pSchema, pContext)
+            Set tValid = tValid && tIfThenElseValid
+        }
+        
+        // Dependencies (property and schema dependencies)
+        If $IsObject(pSchema) && pSchema.%IsDefined("dependencies") {
+            // Only apply to object data
+            If $IsObject(pData) && pData.%IsA("%Library.DynamicObject") {
+                Set tDepsValid = ##class(JSONSchema.Keyword.Conditional).ValidateDependencies(pData, pSchema.dependencies, pContext)
+                Set tValid = tValid && tDepsValid
             }
         }
         

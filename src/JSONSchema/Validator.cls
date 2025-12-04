@@ -9,21 +9,61 @@
 /// <li>JSON Schema Draft 7</li>
 /// </ul>
 /// </p>
+/// <p>
+/// <b>Input Formats Supported:</b>
+/// <ul>
+/// <li><b>JSON Data:</b> %DynamicObject, %DynamicArray, JSON string, %Stream.GlobalCharacter, or primitive values</li>
+/// <li><b>Schema:</b> %DynamicObject, %DynamicArray, JSON string, or %Stream.GlobalCharacter</li>
+/// </ul>
+/// </p>
+/// <p>
+/// <b>Examples:</b>
 /// <example>
+/// // With %DynamicObject
+/// Set tData = {"name": "John", "age": 30}
+/// Set tSchema = {"type": "object"}
 /// Set tValid = ##class(JSONSchema.Validator).Validate(tData, tSchema, .tErrors)
-/// If 'tValid { Write "Validation failed with ", tErrors.%Size(), " errors" }
+/// 
+/// // With JSON strings
+/// Set tDataStr = "{""name"": ""John""}"
+/// Set tSchemaStr = "{""type"": ""object""}"
+/// Set tValid = ##class(JSONSchema.Validator).Validate(tDataStr, tSchemaStr, .tErrors)
+/// 
+/// // With stream
+/// Set tStream = ##class(%Stream.GlobalCharacter).%New()
+/// Do tStream.Write("{""type"": ""string""}")
+/// Do tStream.Rewind()
+/// Set tValid = ##class(JSONSchema.Validator).Validate("test", tStream, .tErrors)
+/// 
+/// // With primitive data
+/// Set tValid = ##class(JSONSchema.Validator).Validate("hello", {"type": "string"}, .tErrors)
 /// </example>
+/// </p>
 Class JSONSchema.Validator Extends %RegisteredObject
 {
 
 /// Validate JSON data against a JSON Schema
 /// <p>
-/// Main entry point for validation. Accepts JSON data and schema as either
-/// %DynamicObject/%DynamicArray or JSON strings, and returns validation result
-/// with any errors collected.
+/// Main entry point for validation. Accepts JSON data and schema in multiple formats
+/// with automatic type detection and parsing. Parse errors are distinguished from
+/// validation errors using keyword "$parse" or "$parseSchema".
 /// </p>
-/// @param pJSON The JSON data to validate (string, %DynamicObject, %DynamicArray, or %Stream)
-/// @param pSchema The JSON Schema to validate against (string, %DynamicObject, or %Stream)
+/// <p>
+/// <b>Accepted Input Formats:</b>
+/// <ul>
+/// <li><b>pJSON (data):</b> %DynamicObject, %DynamicArray, JSON string, %Stream.GlobalCharacter, or primitive value</li>
+/// <li><b>pSchema:</b> %DynamicObject, %DynamicArray, JSON string, or %Stream.GlobalCharacter</li>
+/// </ul>
+/// </p>
+/// <p>
+/// <b>Error Handling:</b>
+/// <ul>
+/// <li>Parse errors use keyword "$parse" (data) or "$parseSchema" (schema)</li>
+/// <li>Validation errors use specific keyword names (type, enum, const, etc.)</li>
+/// </ul>
+/// </p>
+/// @param pJSON The JSON data to validate (multiple formats supported)
+/// @param pSchema The JSON Schema to validate against (multiple formats supported)
 /// @param pErrors Output parameter receiving %DynamicArray of error objects
 /// @param pSchemaVersion Schema version to use (default: "draft-07")
 /// @return 1 if validation passes, 0 if validation fails
@@ -31,13 +71,51 @@ ClassMethod Validate(pJSON, pSchema, Output pErrors As %DynamicArray, pSchemaVer
 {
     Set tResult = 1
     Set pErrors = ##class(%DynamicArray).%New()
+    Set tSchemaParseError = 0
+    Set tDataParseError = 0
     
     Try {
-        // Parse schema (must be an object or boolean)
-        Set tSchema = ..ParseInput(pSchema)
+        // Parse schema first (must be an object or boolean)
+        Try {
+            Set tSchema = ..ParseInput(pSchema)
+            Quit
+        }
+        Catch exSchema {
+            Set tSchemaParseError = 1
+            Set tError = ##class(%DynamicObject).%New()
+            Set tError.keyword = "$parseSchema"
+            Set tError.dataPath = "#"
+            Set tError.schemaPath = "#"
+            Set tError.message = "Invalid JSON schema: " _ exSchema.DisplayString()
+            Do pErrors.%Push(tError)
+            Set tResult = 0
+        }
         
-        // Data can be any JSON value - don't parse primitives as JSON strings
-        Set tData = ..ParseData(pJSON)
+        // If schema parse failed, cannot proceed
+        If tSchemaParseError {
+            Quit
+        }
+        
+        // Parse data (can be any JSON value - don't parse primitives as JSON strings)
+        Try {
+            Set tData = ..ParseData(pJSON)
+            Quit
+        }
+        Catch exData {
+            Set tDataParseError = 1
+            Set tError = ##class(%DynamicObject).%New()
+            Set tError.keyword = "$parse"
+            Set tError.dataPath = "#"
+            Set tError.schemaPath = "#"
+            Set tError.message = "Invalid JSON data: " _ exData.DisplayString()
+            Do pErrors.%Push(tError)
+            Set tResult = 0
+        }
+        
+        // If data parse failed, cannot proceed
+        If tDataParseError {
+            Quit
+        }
         
         // Create validation context
         Set tContext = ##class(JSONSchema.Context).%New(pSchemaVersion)
@@ -51,13 +129,13 @@ ClassMethod Validate(pJSON, pSchema, Output pErrors As %DynamicArray, pSchemaVer
         Quit
     }
     Catch ex {
-        // Handle parse errors or unexpected exceptions
+        // Handle unexpected exceptions
         Set tResult = 0
         Set tError = ##class(%DynamicObject).%New()
-        Set tError.keyword = "$parse"
+        Set tError.keyword = "$internal"
         Set tError.dataPath = "#"
         Set tError.schemaPath = "#"
-        Set tError.message = "Parse error: " _ ex.DisplayString()
+        Set tError.message = "Internal error: " _ ex.DisplayString()
         Do pErrors.%Push(tError)
     }
     Quit tResult
@@ -132,11 +210,12 @@ ClassMethod ValidateNode(pData, pSchema, pContext As JSONSchema.Context) As %Boo
 /// Parse data input - preserves primitives, only parses JSON strings that look like JSON
 /// <p>
 /// Unlike ParseInput (for schemas), this method preserves primitive values
-/// (strings, numbers, booleans) as-is for validation. Only parses strings
-/// that look like JSON objects/arrays.
+/// (strings, numbers, booleans) as-is for validation. Strings that start with
+/// { or [ are treated as JSON and parsed (will throw if invalid).
 /// </p>
 /// @param pInput The data input to process
 /// @return The data value (primitive or object)
+/// @throws Exception if JSON-like string fails to parse
 ClassMethod ParseData(pInput)
 {
     // Already a dynamic object/array - return as-is
@@ -144,7 +223,7 @@ ClassMethod ParseData(pInput)
         If pInput.%IsA("%Library.DynamicAbstractObject") {
             Quit pInput
         }
-        // Handle streams - read and parse as JSON
+        // Handle streams - read and parse as JSON (will throw if invalid)
         If pInput.%IsA("%Stream.Object") {
             Set tJSON = ""
             While 'pInput.AtEnd {
@@ -154,45 +233,66 @@ ClassMethod ParseData(pInput)
         }
     }
     
-    // For non-object inputs, return as-is (primitives: string, number, boolean)
+    // For string inputs that look like JSON (start with { or [), parse them
+    // This allows auto-parsing of JSON string representations
+    If $Extract(pInput, 1, 1) = "{" || ($Extract(pInput, 1, 1) = "[") {
+        // Looks like JSON - parse it (will throw if invalid)
+        Quit ##class(%DynamicAbstractObject).%FromJSON(pInput)
+    }
+    
+    // For other inputs (numbers, non-JSON strings, etc.), return as-is
     // This allows validation of raw primitive values
     Quit pInput
 }
 
 /// Parse input and return %DynamicAbstractObject (for schemas)
 /// <p>
-/// Handles multiple input types:
+/// Handles multiple input types with automatic type detection:
 /// <ul>
 /// <li>%DynamicObject/%DynamicArray - returned as-is</li>
-/// <li>JSON string - parsed to dynamic object</li>
-/// <li>%Stream - read and parsed as JSON</li>
+/// <li>JSON string - parsed to dynamic object/array</li>
+/// <li>%Stream.GlobalCharacter or %Stream.Object - read and parsed as JSON</li>
 /// </ul>
+/// Throws exception if input cannot be parsed as valid JSON.
 /// </p>
-/// @param pInput The input to parse
-/// @return Parsed %DynamicAbstractObject or primitive value wrapper
+/// @param pInput The input to parse (multiple formats supported)
+/// @return Parsed %DynamicAbstractObject (object or array)
+/// @throws Exception if JSON parsing fails
 ClassMethod ParseInput(pInput) As %DynamicAbstractObject
 {
     Set tResult = ""
     
-    // Already a dynamic object/array - return as-is
-    If $IsObject(pInput) {
-        If pInput.%IsA("%Library.DynamicAbstractObject") {
-            Set tResult = pInput
-            Quit tResult
-        }
-        // Handle streams
-        If pInput.%IsA("%Stream.Object") {
-            Set tJSON = ""
-            While 'pInput.AtEnd {
-                Set tJSON = tJSON _ pInput.Read(32000)
+    Try {
+        // Case 1: Already a dynamic object/array - return as-is
+        If $IsObject(pInput) {
+            If pInput.%IsA("%Library.DynamicAbstractObject") {
+                Set tResult = pInput
+                Quit
             }
-            Set tResult = ##class(%DynamicAbstractObject).%FromJSON(tJSON)
-            Quit tResult
+            
+            // Case 2: Stream - read content and parse
+            If pInput.%IsA("%Stream.Object") {
+                Set tJSON = ""
+                While 'pInput.AtEnd {
+                    Set tJSON = tJSON _ pInput.Read(32000)
+                }
+                Set tResult = ##class(%DynamicAbstractObject).%FromJSON(tJSON)
+                Quit
+            }
+            
+            // Unknown object type
+            Throw ##class(%Exception.General).%New("Invalid input type", , , "Input must be %DynamicObject, %DynamicArray, JSON string, or %Stream")
         }
+        
+        // Case 3: String - parse as JSON
+        Set tResult = ##class(%DynamicAbstractObject).%FromJSON(pInput)
+        Quit
+    }
+    Catch ex {
+        // Re-throw with context
+        Throw ex
     }
     
-    // String input - parse as JSON
-    Set tResult = ##class(%DynamicAbstractObject).%FromJSON(pInput)
     Quit tResult
 }
 

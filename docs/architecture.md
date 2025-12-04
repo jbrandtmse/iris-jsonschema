@@ -681,6 +681,18 @@ ZPM "load /path/to/iris-jsonschema"
 
 ## 14. Testing Strategy
 
+### Test Organization Standards
+
+Test files must be organized by feature/functionality with a maximum file size of 800 lines.
+
+- **Naming Convention**: Test{Feature}.cls (e.g., TestTypeValidation.cls)
+- **Organization**: Group related tests by JSON Schema keyword or feature domain
+- **Story Alignment**: Prefer organizing by story when tests naturally group together
+- **File Size Limit**: 800 lines maximum per test file to maintain readability
+- **Base Class**: All tests extend %UnitTest.TestCase
+
+See [Testing Strategy](architecture/14-testing-strategy.md) for detailed guidelines.
+
 ### Testing Pyramid
 
 | Level | Framework | Coverage |

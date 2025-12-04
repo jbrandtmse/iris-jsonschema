@@ -284,5 +284,37 @@ const apiUrl = environment.apiBaseUrl;
 - Prettier for formatting
 - Run `npm run lint` before commits
 
+### 15.17 Test File Organization
+
+Test files must follow size and organization standards to maintain readability:
+
+| Standard | Rule | Example |
+|----------|------|---------|
+| **Max File Size** | 800 lines maximum | TestTypeValidation.cls = 340 lines ✓ |
+| **Organization** | By feature/keyword | TestEnumConst.cls, TestTypeValidation.cls |
+| **Naming** | `Test{Feature}.cls` | TestInputFormats.cls, TestStringKeywords.cls |
+| **Base Class** | Extends %UnitTest.TestCase | `Class Test.JSONSchema.TestTypeValidation Extends %UnitTest.TestCase` |
+| **Story Alignment** | Group by story when natural | Story 1.3 → TestEnumConst.cls |
+
+**Rationale:**
+- Files over 800 lines become difficult to navigate and review
+- Feature-based organization makes it easier to find relevant tests
+- Aligning with stories creates clear ownership and context
+- Allows room for test growth within each feature area
+
+**Class Header Documentation Pattern:**
+```objectscript
+/// Test.JSONSchema.TestTypeValidation - Type keyword validation tests
+/// <p>
+/// Tests for JSON Schema "type" keyword covering all primitive types
+/// (string, number, integer, boolean, null, array, object) and
+/// array-of-types validation.
+/// </p>
+/// <p>
+/// Originally from Story 1.2: Complete Type Keyword Support
+/// </p>
+Class Test.JSONSchema.TestTypeValidation Extends %UnitTest.TestCase
+{
+```
+
 ---
-

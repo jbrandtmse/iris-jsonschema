@@ -1,0 +1,42 @@
+# IRIS / ObjectScript
+*.bak
+*.log
+*.tmp
+*.pyc
+__pycache__/
+.python-version
+
+# IDE and Editor files
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Build outputs
+/build/
+/dist/
+/out/
+
+# Test output
+/test-reports/
+/coverage/
+
+# Debug files
+.ai/debug-log.md
+
+# Local environment
+.env
+.env.local
+*.local
+
+# IRIS specific
+iris.key
+iris.log
+*.gbl
+/data/
+/mgr/

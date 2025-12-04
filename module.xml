@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="25">
+  <Document name="jsonschema.ZPM">
+    <Module>
+      <Name>jsonschema</Name>
+      <Version>0.1.0</Version>
+      <Description>JSON Schema Validator for InterSystems IRIS - Draft 7 compliant validation library</Description>
+      <Packaging>module</Packaging>
+      <SourcesRoot>src</SourcesRoot>
+      <Resource Name="JSONSchema.PKG"/>
+      <Resource Name="Test.JSONSchema.PKG" Scope="test"/>
+      <Dependencies>
+        <ModuleReference>
+          <Name>%ZLANGC00</Name>
+          <Version>*</Version>
+        </ModuleReference>
+      </Dependencies>
+      <SystemRequirements>
+        <IRIS Version="2020.1"/>
+      </SystemRequirements>
+    </Module>
+  </Document>
+</Export>

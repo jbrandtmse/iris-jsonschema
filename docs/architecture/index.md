@@ -1,0 +1,25 @@
+# JSONSchema Validator for InterSystems IRIS
+
+## Table of Contents
+
+- [JSONSchema Validator for InterSystems IRIS](#table-of-contents)
+  - [Fullstack Architecture Document](#fullstack-architecture-document)
+  - [1. Introduction](#1-introduction)
+  - [2. High-Level Architecture](#2-high-level-architecture)
+  - [3. Tech Stack](#3-tech-stack)
+  - [4. Data Models](#4-data-models)
+  - [5. API Specification](#5-api-specification)
+  - [6. Components](#6-components)
+  - [7. Core Workflows](#7-core-workflows)
+  - [8. Frontend Architecture](#8-frontend-architecture)
+  - [9. Backend Architecture](#9-backend-architecture)
+  - [10. Project Structure](#10-project-structure)
+  - [11. Development Workflow](#11-development-workflow)
+  - [12. Deployment Architecture](#12-deployment-architecture)
+  - [13. Security & Performance](#13-security-performance)
+  - [14. Testing Strategy](#14-testing-strategy)
+  - [15. Coding Standards](#15-coding-standards)
+  - [16. Error Handling](#16-error-handling)
+  - [17. Monitoring](#17-monitoring)
+  - [18. Checklist Results](#18-checklist-results)
+  - [Next Steps](#next-steps)

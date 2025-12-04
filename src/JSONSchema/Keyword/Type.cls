@@ -84,6 +84,71 @@ ClassMethod TypeMatches(pActualType As %String, pExpectedType As %String) As %Bo
     Quit 0
 }
 
+/// Validate data against the type keyword using source type information
+/// <p>
+/// Used when validating array items where type info can be lost during extraction.
+/// Uses the source type from the original container rather than re-detecting.
+/// </p>
+/// @param pData The data to validate
+/// @param pExpectedType The expected type (string) or types (array)
+/// @param pContext The validation context for error reporting
+/// @param pSourceType The original type from source container
+/// @return 1 if data type matches, 0 if mismatch
+ClassMethod ValidateWithSourceType(pData, pExpectedType, pContext As JSONSchema.Context, pSourceType As %String) As %Boolean
+{
+    Set tValid = 0
+    
+    // Map source type to JSON Schema type
+    Set tActualType = ..MapSourceType(pSourceType, pData)
+    
+    // Handle array of types (e.g., ["string", "null"])
+    If $IsObject(pExpectedType) && pExpectedType.%IsA("%Library.DynamicArray") {
+        Set tIter = pExpectedType.%GetIterator()
+        While tIter.%GetNext(.tKey, .tType) {
+            If ..TypeMatches(tActualType, tType) {
+                Set tValid = 1
+                Quit
+            }
+        }
+        If 'tValid {
+            Set tTypeList = ..FormatTypeList(pExpectedType)
+            Do pContext.AddError("type", "Expected type " _ tTypeList _ " but got '" _ tActualType _ "'")
+        }
+    }
+    Else {
+        // Single type validation
+        If ..TypeMatches(tActualType, pExpectedType) {
+            Set tValid = 1
+        }
+        Else {
+            Do pContext.AddError("type", "Expected type '" _ pExpectedType _ "' but got '" _ tActualType _ "'")
+        }
+    }
+    
+    Quit tValid
+}
+
+/// Map source type from %GetTypeOf to JSON Schema type
+/// @param pSourceType The source type from %GetTypeOf
+/// @param pData The data value (for integer detection)
+/// @return JSON Schema type name
+ClassMethod MapSourceType(pSourceType As %String, pData) As %String
+{
+    If pSourceType = "boolean" Quit "boolean"
+    If pSourceType = "null" Quit "null"
+    If pSourceType = "string" Quit "string"
+    If pSourceType = "number" {
+        // Check if integer or number (float)
+        If (pData = (pData \ 1)) && (pData '[ ".") Quit "integer"
+        Quit "number"
+    }
+    If pSourceType = "array" Quit "array"
+    If pSourceType = "object" Quit "object"
+    
+    // Fallback to standard detection
+    Quit ##class(JSONSchema.Validator).GetJSONType(pData)
+}
+
 /// Format array of types for error message
 /// @param pTypeArray Dynamic array of type names
 /// @return Formatted string like "['string', 'null']"

@@ -357,6 +357,94 @@ ClassMethod ValidateNode(pData, pSchema, pContext As JSONSchema.Context) As %Boo
             }
         }
         
+        // Array validation keywords (only apply to array data)
+        If tDataType = "array" {
+            
+            // Check minItems
+            If $IsObject(pSchema) && pSchema.%IsDefined("minItems") {
+                Set tMinItemsValid = ##class(JSONSchema.Keyword.Array).ValidateMinItems(pData, pSchema.minItems, pContext)
+                Set tValid = tValid && tMinItemsValid
+            }
+            
+            // Check maxItems
+            If $IsObject(pSchema) && pSchema.%IsDefined("maxItems") {
+                Set tMaxItemsValid = ##class(JSONSchema.Keyword.Array).ValidateMaxItems(pData, pSchema.maxItems, pContext)
+                Set tValid = tValid && tMaxItemsValid
+            }
+            
+            // Check uniqueItems
+            If $IsObject(pSchema) && pSchema.%IsDefined("uniqueItems") && pSchema.uniqueItems {
+                Set tUniqueValid = ##class(JSONSchema.Keyword.Array).ValidateUniqueItems(pData, pContext)
+                Set tValid = tValid && tUniqueValid
+            }
+            
+            // Check contains
+            If $IsObject(pSchema) && pSchema.%IsDefined("contains") {
+                Set tContainsValid = ##class(JSONSchema.Keyword.Array).ValidateContains(pData, pSchema.contains, pContext)
+                Set tValid = tValid && tContainsValid
+            }
+            
+            // Check items
+            If $IsObject(pSchema) && pSchema.%IsDefined("items") {
+                Set tItemsSchema = pSchema.items
+                
+                If $IsObject(tItemsSchema) && tItemsSchema.%IsA("%Library.DynamicArray") {
+                    // Tuple validation - items is array of schemas
+                    Set tTupleLen = tItemsSchema.%Size()
+                    Set tDataLen = pData.%Size()
+                    
+                    // Validate each position against corresponding schema
+                    For tIdx = 0:1:(tTupleLen - 1) {
+                        If tIdx < tDataLen {
+                            Set tItemValue = pData.%Get(tIdx)
+                            Set tItemSchema = tItemsSchema.%Get(tIdx)
+                            Do pContext.PushDataPath(tIdx)
+                            // Pass source type info for correct boolean handling
+                            Set tSourceType = pData.%GetTypeOf(tIdx)
+                            Set tItemValid = ..ValidateNodeWithType(tItemValue, tItemSchema, pContext, tSourceType)
+                            Do pContext.PopDataPath()
+                            Set tValid = tValid && tItemValid
+                        }
+                    }
+                    
+                    // Check additionalItems (only applies to tuple validation)
+                    If pSchema.%IsDefined("additionalItems") && (tDataLen > tTupleLen) {
+                        Set tAdditionalSchema = pSchema.additionalItems
+                        
+                        If tAdditionalSchema = 0 || (tAdditionalSchema = "false") {
+                            // additionalItems: false - reject extra items
+                            Set tMessage = "Array has " _ tDataLen _ " items but only " _ tTupleLen _ " are allowed"
+                            Do pContext.AddError("additionalItems", tMessage)
+                            Set tValid = 0
+                        }
+                        ElseIf $IsObject(tAdditionalSchema) {
+                            // additionalItems: {schema} - validate extra items
+                            For tIdx = tTupleLen:1:(tDataLen - 1) {
+                                Set tItemValue = pData.%Get(tIdx)
+                                Do pContext.PushDataPath(tIdx)
+                                Set tAddValid = ..ValidateNode(tItemValue, tAdditionalSchema, pContext)
+                                Do pContext.PopDataPath()
+                                Set tValid = tValid && tAddValid
+                            }
+                        }
+                        // additionalItems: true - allow without validation
+                    }
+                }
+                ElseIf $IsObject(tItemsSchema) {
+                    // Single schema - all items must match
+                    Set tIter = pData.%GetIterator()
+                    While tIter.%GetNext(.tIdx, .tItemValue) {
+                        Do pContext.PushDataPath(tIdx)
+                        // Pass source type info for correct boolean handling
+                        Set tSourceType = pData.%GetTypeOf(tIdx)
+                        Set tItemValid = ..ValidateNodeWithType(tItemValue, tItemsSchema, pContext, tSourceType)
+                        Do pContext.PopDataPath()
+                        Set tValid = tValid && tItemValid
+                    }
+                }
+            }
+        }
+        
         Quit
     }
     Catch ex {
@@ -457,6 +545,209 @@ ClassMethod ParseInput(pInput) As %DynamicAbstractObject
     }
     
     Quit tResult
+}
+
+/// Validate a node with explicit source type information
+/// <p>
+/// Used for array item validation where type info can be lost during extraction.
+/// </p>
+/// @param pData The data node to validate
+/// @param pSchema The schema node to validate against
+/// @param pContext The validation context for error tracking
+/// @param pSourceType The original type from source container (e.g., "boolean", "number")
+/// @return 1 if node is valid, 0 if invalid
+ClassMethod ValidateNodeWithType(pData, pSchema, pContext As JSONSchema.Context, pSourceType As %String = "") As %Boolean
+{
+    Set tValid = 1
+    
+    // Check recursion depth
+    If 'pContext.IncrementDepth() {
+        Quit 0
+    }
+    
+    Try {
+        // Handle boolean schemas (true = allow all, false = deny all)
+        If '$IsObject(pSchema) {
+            If pSchema = 1 || (pSchema = "true") {
+                Quit
+            }
+            ElseIf pSchema = 0 || (pSchema = "false") {
+                Do pContext.AddError("$schema", "Schema is false, no data is valid")
+                Set tValid = 0
+                Quit
+            }
+        }
+        
+        // Process type keyword if present - use source type if available
+        If $IsObject(pSchema) && pSchema.%IsDefined("type") {
+            Set tTypeValue = pSchema.%Get("type")
+            // Use source type for validation if provided
+            If pSourceType '= "" {
+                Set tTypeValid = ##class(JSONSchema.Keyword.Type).ValidateWithSourceType(pData, tTypeValue, pContext, pSourceType)
+            }
+            Else {
+                Set tTypeValid = ##class(JSONSchema.Keyword.Type).Validate(pData, tTypeValue, pContext)
+            }
+            If 'tTypeValid {
+                Set tValid = 0
+            }
+        }
+        
+        // For remaining validations, delegate to regular ValidateNode
+        // (only type checking needs source type info)
+        // Check for enum keyword
+        If $IsObject(pSchema) && pSchema.%IsDefined("enum") {
+            Set tEnumValid = ##class(JSONSchema.Keyword.Enum).Validate(pData, pSchema.enum, pContext)
+            Set tValid = tValid && tEnumValid
+        }
+        
+        // Check for const keyword
+        If $IsObject(pSchema) && pSchema.%IsDefined("const") {
+            Set tConstValid = ##class(JSONSchema.Keyword.Const).Validate(pData, pSchema.const, pContext)
+            Set tValid = tValid && tConstValid
+        }
+        
+        // Get data type for conditional keyword processing
+        Set tDataType = ..GetJSONTypeFromSource(pData, pSourceType)
+        
+        // String validation keywords
+        If tDataType = "string" {
+            If $IsObject(pSchema) && pSchema.%IsDefined("minLength") {
+                Set tValid = tValid && ##class(JSONSchema.Keyword.String).ValidateMinLength(pData, pSchema.minLength, pContext)
+            }
+            If $IsObject(pSchema) && pSchema.%IsDefined("maxLength") {
+                Set tValid = tValid && ##class(JSONSchema.Keyword.String).ValidateMaxLength(pData, pSchema.maxLength, pContext)
+            }
+            If $IsObject(pSchema) && pSchema.%IsDefined("pattern") {
+                Set tValid = tValid && ##class(JSONSchema.Keyword.String).ValidatePattern(pData, pSchema.pattern, pContext)
+            }
+            If $IsObject(pSchema) && pSchema.%IsDefined("format") {
+                Set tValid = tValid && ##class(JSONSchema.Keyword.String).ValidateFormat(pData, pSchema.format, pContext)
+            }
+        }
+        
+        // Numeric validation keywords
+        If (tDataType = "number") || (tDataType = "integer") {
+            If $IsObject(pSchema) && pSchema.%IsDefined("minimum") {
+                Set tValid = tValid && ##class(JSONSchema.Keyword.Numeric).ValidateMinimum(pData, pSchema.minimum, pContext)
+            }
+            If $IsObject(pSchema) && pSchema.%IsDefined("maximum") {
+                Set tValid = tValid && ##class(JSONSchema.Keyword.Numeric).ValidateMaximum(pData, pSchema.maximum, pContext)
+            }
+            If $IsObject(pSchema) && pSchema.%IsDefined("exclusiveMinimum") {
+                Set tValid = tValid && ##class(JSONSchema.Keyword.Numeric).ValidateExclusiveMinimum(pData, pSchema.exclusiveMinimum, pContext)
+            }
+            If $IsObject(pSchema) && pSchema.%IsDefined("exclusiveMaximum") {
+                Set tValid = tValid && ##class(JSONSchema.Keyword.Numeric).ValidateExclusiveMaximum(pData, pSchema.exclusiveMaximum, pContext)
+            }
+            If $IsObject(pSchema) && pSchema.%IsDefined("multipleOf") {
+                Set tValid = tValid && ##class(JSONSchema.Keyword.Numeric).ValidateMultipleOf(pData, pSchema.multipleOf, pContext)
+            }
+        }
+        
+        // Array validation keywords (only apply to array data)
+        If tDataType = "array" {
+            
+            // Check minItems
+            If $IsObject(pSchema) && pSchema.%IsDefined("minItems") {
+                Set tMinItemsValid = ##class(JSONSchema.Keyword.Array).ValidateMinItems(pData, pSchema.minItems, pContext)
+                Set tValid = tValid && tMinItemsValid
+            }
+            
+            // Check maxItems
+            If $IsObject(pSchema) && pSchema.%IsDefined("maxItems") {
+                Set tMaxItemsValid = ##class(JSONSchema.Keyword.Array).ValidateMaxItems(pData, pSchema.maxItems, pContext)
+                Set tValid = tValid && tMaxItemsValid
+            }
+            
+            // Check uniqueItems
+            If $IsObject(pSchema) && pSchema.%IsDefined("uniqueItems") && pSchema.uniqueItems {
+                Set tUniqueValid = ##class(JSONSchema.Keyword.Array).ValidateUniqueItems(pData, pContext)
+                Set tValid = tValid && tUniqueValid
+            }
+            
+            // Check contains
+            If $IsObject(pSchema) && pSchema.%IsDefined("contains") {
+                Set tContainsValid = ##class(JSONSchema.Keyword.Array).ValidateContains(pData, pSchema.contains, pContext)
+                Set tValid = tValid && tContainsValid
+            }
+            
+            // Check items
+            If $IsObject(pSchema) && pSchema.%IsDefined("items") {
+                Set tItemsSchema = pSchema.items
+                
+                If $IsObject(tItemsSchema) && tItemsSchema.%IsA("%Library.DynamicArray") {
+                    // Tuple validation - items is array of schemas
+                    Set tTupleLen = tItemsSchema.%Size()
+                    Set tDataLen = pData.%Size()
+                    
+                    // Validate each position against corresponding schema
+                    For tIdx = 0:1:(tTupleLen - 1) {
+                        If tIdx < tDataLen {
+                            Set tItemValue = pData.%Get(tIdx)
+                            Set tItemSchema = tItemsSchema.%Get(tIdx)
+                            Do pContext.PushDataPath(tIdx)
+                            Set tSourceType = pData.%GetTypeOf(tIdx)
+                            Set tItemValid = ..ValidateNodeWithType(tItemValue, tItemSchema, pContext, tSourceType)
+                            Do pContext.PopDataPath()
+                            Set tValid = tValid && tItemValid
+                        }
+                    }
+                    
+                    // Check additionalItems (only applies to tuple validation)
+                    If pSchema.%IsDefined("additionalItems") && (tDataLen > tTupleLen) {
+                        Set tAdditionalSchema = pSchema.additionalItems
+                        
+                        If tAdditionalSchema = 0 || (tAdditionalSchema = "false") {
+                            Set tMessage = "Array has " _ tDataLen _ " items but only " _ tTupleLen _ " are allowed"
+                            Do pContext.AddError("additionalItems", tMessage)
+                            Set tValid = 0
+                        }
+                        ElseIf $IsObject(tAdditionalSchema) {
+                            For tIdx = tTupleLen:1:(tDataLen - 1) {
+                                Set tItemValue = pData.%Get(tIdx)
+                                Do pContext.PushDataPath(tIdx)
+                                Set tAddValid = ..ValidateNode(tItemValue, tAdditionalSchema, pContext)
+                                Do pContext.PopDataPath()
+                                Set tValid = tValid && tAddValid
+                            }
+                        }
+                    }
+                }
+                ElseIf $IsObject(tItemsSchema) {
+                    // Single schema - all items must match
+                    Set tIter = pData.%GetIterator()
+                    While tIter.%GetNext(.tIdx, .tItemValue) {
+                        Do pContext.PushDataPath(tIdx)
+                        Set tSourceType = pData.%GetTypeOf(tIdx)
+                        Set tItemValid = ..ValidateNodeWithType(tItemValue, tItemsSchema, pContext, tSourceType)
+                        Do pContext.PopDataPath()
+                        Set tValid = tValid && tItemValid
+                    }
+                }
+            }
+        }
+        
+        Quit
+    }
+    Catch ex {
+        Do pContext.AddError("$internal", "Internal error: " _ ex.DisplayString())
+        Set tValid = 0
+    }
+    
+    Do pContext.DecrementDepth()
+    Quit tValid
+}
+
+/// Get JSON type using source type info when available
+ClassMethod GetJSONTypeFromSource(pData, pSourceType As %String = "") As %String
+{
+    // If source type provided, use it (handles boolean correctly)
+    If pSourceType = "boolean" Quit "boolean"
+    If pSourceType = "null" Quit "null"
+    
+    // Otherwise use standard detection
+    Quit ..GetJSONType(pData)
 }
 
 /// Get the JSON Schema type of a value

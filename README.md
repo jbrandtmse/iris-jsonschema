@@ -189,6 +189,90 @@ iris-jsonschema/
 ### Epic 3: Web Application & Distribution
 - 🔜 Upcoming
 
+## REST API
+
+The JSON Schema Validator also provides a REST API for programmatic access.
+
+### Setup Web Application
+
+Configure the CSP web application using the helper class:
+
+```objectscript
+// Create the /api/jsonschema web application
+Do ##class(JSONSchema.REST.Setup).CreateApplication()
+
+// Check if application exists
+Write ##class(JSONSchema.REST.Setup).ApplicationExists()
+
+// Delete application (if needed)
+Do ##class(JSONSchema.REST.Setup).DeleteApplication()
+```
+
+### API Endpoint
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/jsonschema/validate` | Validate JSON against a schema |
+| OPTIONS | `/api/jsonschema/validate` | CORS preflight |
+
+### Request Format
+
+```json
+{
+  "jsonInput": "<json-string>",
+  "schemaInput": "<schema-string>",
+  "schemaVersion": "draft-07"  // Optional, defaults to "draft-07"
+}
+```
+
+### Response Format
+
+```json
+{
+  "valid": true,
+  "errors": [],
+  "schemaVersion": "draft-07"
+}
+```
+
+### Example: curl
+
+```bash
+# Valid JSON example
+curl -X POST http://localhost:52773/api/jsonschema/validate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonInput": "{\"name\": \"John\", \"age\": 30}",
+    "schemaInput": "{\"type\": \"object\", \"properties\": {\"name\": {\"type\": \"string\"}, \"age\": {\"type\": \"integer\"}}}"
+  }'
+
+# Response: {"valid":1,"errors":[],"schemaVersion":"draft-07"}
+```
+
+```bash
+# Invalid JSON example (wrong type)
+curl -X POST http://localhost:52773/api/jsonschema/validate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonInput": "\"not an object\"",
+    "schemaInput": "{\"type\": \"object\"}"
+  }'
+
+# Response: {"valid":0,"errors":[{"keyword":"type","dataPath":"#","schemaPath":"#/type","message":"Expected type 'object' but got 'string'"}],"schemaVersion":"draft-07"}
+```
+
+### Example: PowerShell
+
+```powershell
+$body = @{
+    jsonInput = '{"name": "John", "age": 30}'
+    schemaInput = '{"type": "object", "properties": {"name": {"type": "string"}, "age": {"type": "integer"}}}'
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:52773/api/jsonschema/validate" `
+    -Method POST -ContentType "application/json" -Body $body
+```
+
 ## Testing
 
 Run the unit tests using IRIS terminal:
@@ -197,7 +281,7 @@ Run the unit tests using IRIS terminal:
 Do ##class(%UnitTest.Manager).RunTest("Test.JSONSchema")
 ```
 
-**Current test coverage: 290 tests, all passing.**
+**Current test coverage: 303 tests, all passing.**
 
 ## Requirements
 
@@ -213,4 +297,4 @@ Contributions are welcome! Please read the documentation in `/docs/` for archite
 
 ## Acknowledgments
 
-Built with [BMAD Framework](https://github.com/bmadone/bmad-core) for AI-assisted development.
+Built with [BMAD Framework](https://github.com/bmad-code-org/BMAD-METHOD) for AI-assisted development.

@@ -8,32 +8,80 @@ This project provides a native ObjectScript implementation of JSON Schema valida
 
 ## Features
 
-- **JSON Schema Draft-07 Support** - Implements the JSON Schema Draft-07 specification
+- **JSON Schema Draft-07 Support** - Complete implementation of the JSON Schema Draft-07 specification
 - **Native ObjectScript** - No external dependencies, runs entirely within IRIS
 - **Comprehensive Type Validation** - Supports all JSON types (string, number, integer, boolean, null, array, object)
+- **Schema Composition** - Full support for allOf, anyOf, oneOf, not combinators
+- **Conditional Schemas** - if/then/else and dependencies support
+- **Schema References** - $ref resolution for internal and remote references
 - **Detailed Error Reporting** - Returns structured error objects with keyword, path, and message information
-- **IPM Package** - Installable via InterSystems Package Manager (IPM/ZPM)
 
 ## Installation
-
-### Via IPM (Recommended)
-
-```objectscript
-zpm "install jsonschema"
-```
 
 ### Manual Installation
 
 1. Clone this repository
 2. Import the classes from `/src/JSONSchema/` into your IRIS namespace
-3. Compile the package
+3. Compile the package:
+
+```objectscript
+Do $System.OBJ.CompilePackage("JSONSchema", "ck")
+Do $System.OBJ.CompilePackage("Test.JSONSchema", "ck")
+```
 
 ## Quick Start
 
 ```objectscript
-// Validate a string against a schema
-Set tData = "hello"
-Set tSchema = {"type": "string"}
+// Define a schema for a person object
+Set tSchema = {
+    "type": "object",
+    "required": ["name", "email", "age"],
+    "properties": {
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+        },
+        "email": {
+            "type": "string",
+            "format": "email"
+        },
+        "age": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 150
+        },
+        "address": {
+            "type": "object",
+            "properties": {
+                "street": {"type": "string"},
+                "city": {"type": "string"},
+                "zipCode": {"type": "string", "pattern": "^[0-9]{5}(-[0-9]{4})?$"}
+            }
+        },
+        "tags": {
+            "type": "array",
+            "items": {"type": "string"},
+            "uniqueItems": true
+        }
+    },
+    "additionalProperties": false
+}
+
+// Define the data to validate
+Set tData = {
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "age": 35,
+    "address": {
+        "street": "123 Main St",
+        "city": "Springfield",
+        "zipCode": "12345"
+    },
+    "tags": ["developer", "team-lead"]
+}
+
+// Validate the data
 Set tValid = ##class(JSONSchema.Validator).Validate(tData, tSchema, .tErrors)
 
 If tValid {
@@ -43,7 +91,7 @@ Else {
     Write "Validation failed with ", tErrors.%Size(), " errors", !
     Set tIter = tErrors.%GetIterator()
     While tIter.%GetNext(.tKey, .tError) {
-        Write "  - ", tError.message, !
+        Write "  - [", tError.dataPath, "] ", tError.message, !
     }
 }
 ```
@@ -91,7 +139,11 @@ iris-jsonschema/
 │   │       ├── Const.cls      # Const keyword validation
 │   │       ├── String.cls     # String keywords (minLength, maxLength, pattern, format)
 │   │       ├── Numeric.cls    # Numeric keywords (minimum, maximum, multipleOf, etc.)
-│   │       └── Object.cls     # Object keywords (properties, required, additionalProperties, etc.)
+│   │       ├── Object.cls     # Object keywords (properties, required, additionalProperties, etc.)
+│   │       ├── Array.cls      # Array keywords (items, minItems, maxItems, uniqueItems, etc.)
+│   │       ├── Combinator.cls # Schema combinators (allOf, anyOf, oneOf, not)
+│   │       ├── Conditional.cls # Conditional schemas (if/then/else, dependencies)
+│   │       └── Ref.cls        # Schema references ($ref, definitions, $defs)
 │   └── Test/JSONSchema/
 │       ├── TestValidator.cls        # Foundation tests
 │       ├── TestTypeValidation.cls   # Type keyword tests
@@ -101,13 +153,17 @@ iris-jsonschema/
 │       ├── TestPathTracking.cls     # Path tracking tests
 │       ├── TestStringKeywords.cls   # String keyword tests
 │       ├── TestNumericKeywords.cls  # Numeric keyword tests
-│       └── TestObjectKeywords.cls   # Object keyword tests
+│       ├── TestObjectKeywords.cls   # Object keyword tests
+│       ├── TestArrayKeywords.cls    # Array keyword tests
+│       ├── TestCombinators.cls      # Schema combinator tests
+│       ├── TestConditional.cls      # Conditional schema tests
+│       └── TestRefKeyword.cls       # $ref keyword tests
 ├── docs/                      # Documentation
 │   ├── stories/               # User stories
 │   ├── qa/                    # QA gates and assessments
 │   ├── prd/                   # Product requirements
 │   └── architecture/          # Architecture documentation
-├── module.xml                 # IPM package definition
+├── module.xml                 # Package definition
 └── README.md
 ```
 
@@ -121,32 +177,31 @@ iris-jsonschema/
 - ✅ Story 1.5: Flexible Input Handling
 - ✅ Story 1.6: Test File Organization (800-line limit)
 
-### Epic 2: Complete JSON Schema Draft-07 Support 🔄 In Progress
+### Epic 2: Complete JSON Schema Draft-07 Support ✅ Complete
 - ✅ Story 2.1: String Validation Keywords (minLength, maxLength, pattern, format)
 - ✅ Story 2.2: Numeric Validation Keywords (minimum, maximum, exclusiveMinimum, exclusiveMaximum, multipleOf)
 - ✅ Story 2.3: Object Validation Keywords (properties, required, additionalProperties, patternProperties, propertyNames, minProperties, maxProperties)
-- 🔜 Story 2.4: Array Validation Keywords
-- 🔜 Story 2.5: Schema Composition Keywords (allOf, anyOf, oneOf, not)
-- 🔜 Story 2.6: Conditional Schema Keywords (if/then/else)
-- 🔜 Story 2.7: Reference and Definition Keywords ($ref, definitions)
+- ✅ Story 2.4: Array Validation Keywords (items, minItems, maxItems, uniqueItems, contains, additionalItems)
+- ✅ Story 2.5: Schema Composition Keywords (allOf, anyOf, oneOf, not)
+- ✅ Story 2.6: Conditional Schema Keywords (if/then/else, dependencies)
+- ✅ Story 2.7: Reference and Definition Keywords ($ref, definitions, $defs)
 
 ### Epic 3: Web Application & Distribution
 - 🔜 Upcoming
 
 ## Testing
 
-Run the unit tests using MCP tools or IRIS terminal:
+Run the unit tests using IRIS terminal:
 
 ```objectscript
 Do ##class(%UnitTest.Manager).RunTest("Test.JSONSchema")
 ```
 
-**Current test coverage: 183 tests, all passing.**
+**Current test coverage: 290 tests, all passing.**
 
 ## Requirements
 
 - InterSystems IRIS 2020.1 or later
-- IPM/ZPM (for package installation)
 
 ## License
 

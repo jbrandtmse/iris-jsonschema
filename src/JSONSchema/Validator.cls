@@ -159,6 +159,17 @@ ClassMethod ValidateNode(pData, pSchema, pContext As JSONSchema.Context) As %Boo
     }
     
     Try {
+        // $ref overrides ALL other keywords - check first (per JSON Schema spec)
+        If $IsObject(pSchema) && pSchema.%IsDefined("$ref") {
+            Set tRefValue = pSchema.%Get("$ref")
+            
+            // Delegate to Ref handler - it handles circular detection internally
+            Set tValid = ##class(JSONSchema.Keyword.Ref).ValidateRef(pData, tRefValue, pContext)
+            
+            // Skip ALL other keyword processing - $ref is the complete schema
+            Quit  // Exit Try block, depth decremented below
+        }
+        
         // Handle boolean schemas (true = allow all, false = deny all)
         If '$IsObject(pSchema) {
             If pSchema = 1 || (pSchema = "true") {
@@ -602,6 +613,17 @@ ClassMethod ValidateNodeWithType(pData, pSchema, pContext As JSONSchema.Context,
     }
     
     Try {
+        // $ref overrides ALL other keywords - check first (per JSON Schema spec)
+        If $IsObject(pSchema) && pSchema.%IsDefined("$ref") {
+            Set tRefValue = pSchema.%Get("$ref")
+            
+            // Delegate to Ref handler - it handles circular detection internally
+            Set tValid = ##class(JSONSchema.Keyword.Ref).ValidateRef(pData, tRefValue, pContext)
+            
+            // Skip ALL other keyword processing - $ref is the complete schema
+            Quit  // Exit Try block, depth decremented below
+        }
+        
         // Handle boolean schemas (true = allow all, false = deny all)
         If '$IsObject(pSchema) {
             If pSchema = 1 || (pSchema = "true") {

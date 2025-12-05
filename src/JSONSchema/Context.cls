@@ -32,6 +32,12 @@ Property SchemaVersion As %String [ InitialExpression = "draft-07" ];
 /// Reference to the root schema for $ref resolution
 Property RootSchema As %DynamicObject;
 
+/// Track visited $ref paths for circular reference detection
+Property VisitedRefs As %DynamicObject;
+
+/// Cache for remote schemas fetched during validation
+Property RemoteSchemaCache As %DynamicObject;
+
 /// Constructor - Initialize context with optional schema version
 /// <p>
 /// Creates a new validation context with an empty errors array.
@@ -42,6 +48,8 @@ Method %OnNew(pSchemaVersion As %String = "draft-07") As %Status
     Set tSC = $$$OK
     Try {
         Set ..Errors = ##class(%DynamicArray).%New()
+        Set ..VisitedRefs = ##class(%DynamicObject).%New()
+        Set ..RemoteSchemaCache = ##class(%DynamicObject).%New()
         Set ..SchemaVersion = pSchemaVersion
         Quit
     }
@@ -120,6 +128,44 @@ Method PopSchemaPath()
     Set tLastSlash = $Length(..SchemaPath) - $Length($Piece(..SchemaPath, "/", $Length(..SchemaPath, "/")))
     If tLastSlash > 0 {
         Set ..SchemaPath = $Extract(..SchemaPath, 1, tLastSlash - 1)
+    }
+}
+
+/// Check if a reference path has been visited (circular reference detection)
+/// Uses counter-based tracking to allow recursive schemas (same ref at different data levels)
+/// Only flags as circular if the same ref is encountered while already being resolved
+/// @param pRefPath The $ref path to check
+/// @return 1 if already being resolved (circular), 0 if not
+Method IsRefVisited(pRefPath As %String) As %Boolean
+{
+    If '..VisitedRefs.%IsDefined(pRefPath) Quit 0
+    // Check if count > 0 (currently being resolved)
+    Quit (..VisitedRefs.%Get(pRefPath) > 0)
+}
+
+/// Mark a reference path as visited (increment counter)
+/// @param pRefPath The $ref path to mark
+Method MarkRefVisited(pRefPath As %String)
+{
+    Set tCount = 0
+    If ..VisitedRefs.%IsDefined(pRefPath) {
+        Set tCount = ..VisitedRefs.%Get(pRefPath)
+    }
+    Do ..VisitedRefs.%Set(pRefPath, tCount + 1)
+}
+
+/// Remove a reference path from visited set (decrement counter)
+/// @param pRefPath The $ref path to unmark
+Method UnmarkRefVisited(pRefPath As %String)
+{
+    If ..VisitedRefs.%IsDefined(pRefPath) {
+        Set tCount = ..VisitedRefs.%Get(pRefPath) - 1
+        If tCount <= 0 {
+            Do ..VisitedRefs.%Remove(pRefPath)
+        }
+        Else {
+            Do ..VisitedRefs.%Set(pRefPath, tCount)
+        }
     }
 }
 

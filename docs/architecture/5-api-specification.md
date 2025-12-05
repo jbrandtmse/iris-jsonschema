@@ -11,7 +11,7 @@ info:
 
 servers:
   - url: /api/jsonschema
-    description: IRIS CSP Application base path
+    description: IRIS CSP Application base path (configured via JSONSchema.REST.Setup class)
 
 paths:
   /validate:
@@ -89,5 +89,25 @@ components:
               type: string
 ```
 
+### CSP Application Setup
+
+The REST API requires a CSP web application to be configured in IRIS. The `JSONSchema.REST.Setup` class provides programmatic setup:
+
+```objectscript
+// Create the /api/jsonschema web application
+Do ##class(JSONSchema.REST.Setup).CreateApplication()
+
+// Create with custom namespace
+Do ##class(JSONSchema.REST.Setup).CreateApplication("MYNAMESPACE")
+
+// Remove the web application
+Do ##class(JSONSchema.REST.Setup).DeleteApplication()
+```
+
+The Setup class handles:
+- Namespace switching to %SYS for Security.Applications access
+- CSP application creation with correct dispatch class
+- CORS configuration for cross-origin requests
+- Authentication settings for unauthenticated access
+
 ---
-

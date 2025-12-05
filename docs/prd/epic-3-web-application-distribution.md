@@ -23,6 +23,7 @@ Deliver the complete MVP product including a REST API endpoint for programmatic 
 9. CORS headers configured for cross-origin requests from web UI
 10. Unit/integration test validates endpoint with valid and invalid JSON
 11. Web application mapping documented (CSP application setup instructions)
+12. `JSONSchema.REST.Setup` helper class provides programmatic CSP application creation
 
 ### Story 3.2: Angular Project Foundation
 
@@ -175,4 +176,3 @@ Deliver the complete MVP product including a REST API endpoint for programmatic 
 12. Table of contents with hyperlinks to all sections
 
 ---
-

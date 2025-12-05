@@ -11,7 +11,8 @@ iris-jsonschema/
 │   │   ├── Context.cls
 │   │   ├── RefResolver.cls
 │   │   ├── REST/
-│   │   │   └── Dispatch.cls
+│   │   │   ├── Dispatch.cls
+│   │   │   └── Setup.cls
 │   │   └── Keyword/
 │   │       ├── Type.cls
 │   │       ├── Enum.cls

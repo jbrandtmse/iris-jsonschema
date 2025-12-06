@@ -52,7 +52,7 @@ Deliver the complete MVP product including a REST API endpoint for programmatic 
 
 **Acceptance Criteria:**
 
-1. Monaco Editor (VS Code's editor) or CodeMirror integrated for both panes
+1. CodeMirror 6 integrated for both panes *(selected over Monaco for ~95% smaller bundle and better mobile support)*
 2. JSON syntax highlighting enabled
 3. Line numbers displayed
 4. Auto-indentation and bracket matching functional

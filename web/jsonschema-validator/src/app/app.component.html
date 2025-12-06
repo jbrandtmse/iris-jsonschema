@@ -8,20 +8,18 @@
     <as-split direction="horizontal" [gutterSize]="8">
       <as-split-area [size]="50">
         <div class="editor-pane">
-          <h3>JSON Input</h3>
-          <div class="editor-placeholder">
-            <!-- JsonEditorComponent will be added in Task 7 -->
-            <textarea placeholder="Enter your JSON data here..."></textarea>
-          </div>
+          <app-json-editor 
+            [initialContent]="jsonInput()"
+            (contentChange)="onJsonChange($event)">
+          </app-json-editor>
         </div>
       </as-split-area>
       <as-split-area [size]="50">
         <div class="editor-pane">
-          <h3>JSON Schema</h3>
-          <div class="editor-placeholder">
-            <!-- SchemaEditorComponent will be added in Task 7 -->
-            <textarea placeholder="Enter your JSON Schema here..."></textarea>
-          </div>
+          <app-schema-editor 
+            [initialContent]="schemaInput()"
+            (contentChange)="onSchemaChange($event)">
+          </app-schema-editor>
         </div>
       </as-split-area>
     </as-split>
@@ -38,7 +36,7 @@
   <div class="results-section">
     <h3>Validation Results</h3>
     <div class="results-placeholder">
-      <!-- ValidationResultComponent will be added in Task 7 -->
+      <!-- ValidationResultComponent will be added in Story 3.4 -->
       <p>Click "Validate" to see results</p>
     </div>
   </div>

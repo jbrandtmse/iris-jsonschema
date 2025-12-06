@@ -1,0 +1,129 @@
+.app-container {
+  padding: 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.editor-section {
+  margin-bottom: 16px;
+  height: 450px;
+
+  as-split {
+    height: 100%;
+  }
+}
+
+.editor-pane {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 8px;
+  background-color: #fafafa;
+
+  h3 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #673ab7; // Deep Purple primary
+    font-weight: 500;
+  }
+
+  .editor-placeholder {
+    flex: 1;
+    display: flex;
+
+    textarea {
+      flex: 1;
+      width: 100%;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 12px;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+      font-size: 13px;
+      resize: none;
+      background-color: #ffffff;
+
+      &:focus {
+        outline: 2px solid #673ab7;
+        border-color: transparent;
+      }
+    }
+  }
+}
+
+.action-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+
+  button {
+    min-width: 150px;
+    font-size: 16px;
+    padding: 8px 32px;
+  }
+}
+
+.results-section {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 16px;
+  background-color: #fafafa;
+  min-height: 150px;
+
+  h3 {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #673ab7;
+    font-weight: 500;
+  }
+
+  .results-placeholder {
+    padding: 16px;
+    text-align: center;
+    color: #757575;
+  }
+}
+
+// Responsive behavior for narrow screens
+@media (max-width: 768px) {
+  .editor-section {
+    height: auto;
+    min-height: 500px;
+
+    as-split {
+      // Angular-split will handle the vertical direction via direction attribute
+      // For fallback, we stack the panes
+      flex-direction: column !important;
+    }
+
+    ::ng-deep {
+      .as-split-area {
+        min-height: 200px !important;
+      }
+    }
+  }
+
+  .editor-pane {
+    min-height: 200px;
+
+    .editor-placeholder textarea {
+      min-height: 180px;
+    }
+  }
+}
+
+// Split gutter styling
+::ng-deep {
+  .as-split-gutter {
+    background-color: #e0e0e0;
+    
+    &:hover {
+      background-color: #bdbdbd;
+    }
+  }
+
+  .as-split-gutter-icon {
+    background-image: none !important;
+  }
+}

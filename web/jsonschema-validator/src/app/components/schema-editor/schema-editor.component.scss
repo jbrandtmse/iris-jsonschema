@@ -1,0 +1,21 @@
+.schema-editor-container {
+  height: 100%;
+  display: flex;
+
+  textarea {
+    flex: 1;
+    width: 100%;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 12px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+    font-size: 13px;
+    resize: none;
+    background-color: #ffffff;
+
+    &:focus {
+      outline: 2px solid #673ab7;
+      border-color: transparent;
+    }
+  }
+}

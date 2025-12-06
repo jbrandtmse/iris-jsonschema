@@ -1,0 +1,45 @@
+<mat-toolbar color="primary">
+  <span>{{ title }}</span>
+</mat-toolbar>
+
+<div class="app-container">
+  <!-- Editor Panes Section with Split Pane -->
+  <div class="editor-section">
+    <as-split direction="horizontal" [gutterSize]="8">
+      <as-split-area [size]="50">
+        <div class="editor-pane">
+          <h3>JSON Input</h3>
+          <div class="editor-placeholder">
+            <!-- JsonEditorComponent will be added in Task 7 -->
+            <textarea placeholder="Enter your JSON data here..."></textarea>
+          </div>
+        </div>
+      </as-split-area>
+      <as-split-area [size]="50">
+        <div class="editor-pane">
+          <h3>JSON Schema</h3>
+          <div class="editor-placeholder">
+            <!-- SchemaEditorComponent will be added in Task 7 -->
+            <textarea placeholder="Enter your JSON Schema here..."></textarea>
+          </div>
+        </div>
+      </as-split-area>
+    </as-split>
+  </div>
+
+  <!-- Validate Button Section -->
+  <div class="action-section">
+    <button mat-raised-button color="primary" (click)="onValidate()" [disabled]="isValidating()">
+      {{ isValidating() ? 'Validating...' : 'Validate' }}
+    </button>
+  </div>
+
+  <!-- Results Section -->
+  <div class="results-section">
+    <h3>Validation Results</h3>
+    <div class="results-placeholder">
+      <!-- ValidationResultComponent will be added in Task 7 -->
+      <p>Click "Validate" to see results</p>
+    </div>
+  </div>
+</div>

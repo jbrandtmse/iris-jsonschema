@@ -186,8 +186,106 @@ iris-jsonschema/
 - ✅ Story 2.6: Conditional Schema Keywords (if/then/else, dependencies)
 - ✅ Story 2.7: Reference and Definition Keywords ($ref, definitions, $defs)
 
-### Epic 3: Web Application & Distribution
-- 🔜 Upcoming
+### Epic 3: Web Application & Distribution 🚧 In Progress
+- ✅ Story 3.1: REST API Endpoint
+- ✅ Story 3.2: Angular Project Foundation
+- ✅ Story 3.3: JSON and Schema Editors
+- ✅ Story 3.4: Validation Integration and Results Display
+- 🔜 Story 3.5: Production Build and Deployment
+
+## Web Application UI
+
+An Angular-based web application provides a user-friendly interface for JSON Schema validation.
+
+### Prerequisites
+
+- Node.js 18+ and npm
+- IRIS REST API configured and running (see [REST API Setup](#setup-web-application))
+
+### Installation
+
+```bash
+# Navigate to the Angular project directory
+cd web/jsonschema-validator
+
+# Install dependencies
+npm install
+```
+
+### Running the Development Server
+
+The Angular app uses a proxy configuration to forward API requests to IRIS.
+
+```bash
+# Start the development server with API proxy
+cd web/jsonschema-validator
+npm start
+```
+
+The application will be available at **http://localhost:4200**
+
+### Configuration
+
+#### API Proxy (Development)
+
+The development server proxies `/api` requests to IRIS. The proxy configuration is in `proxy.conf.json`:
+
+```json
+{
+  "/api": {
+    "target": "http://localhost:52773",
+    "secure": false,
+    "changeOrigin": true
+  }
+}
+```
+
+**To use a different IRIS server**, update the `target` URL in `proxy.conf.json`.
+
+#### Environment Configuration
+
+API settings are configured in the environment files:
+
+| File | Purpose |
+|------|---------|
+| `src/environments/environment.ts` | Development settings |
+| `src/environments/environment.prod.ts` | Production settings |
+
+### Running Tests
+
+```bash
+# Run unit tests
+cd web/jsonschema-validator
+npm test
+
+# Run tests with code coverage
+npm test -- --no-watch --code-coverage
+```
+
+**Current test coverage: 78 tests, all passing.**
+
+### Production Build
+
+```bash
+# Build for production
+cd web/jsonschema-validator
+npm run build
+
+# Output is generated in dist/jsonschema-validator/
+```
+
+### UI Features
+
+| Feature | Description |
+|---------|-------------|
+| **Split-pane Editors** | Side-by-side JSON and Schema editors with CodeMirror 6 |
+| **Syntax Highlighting** | Full JSON syntax highlighting with error detection |
+| **Schema Version Selector** | Choose between Draft-07 and 2020-12 |
+| **Validation Results** | Green ✓ Valid or Red ✗ Invalid with error details |
+| **Error Navigation** | Click errors to jump to the relevant line in the JSON editor |
+| **Keyboard Shortcuts** | Ctrl+Enter to trigger validation |
+
+---
 
 ## REST API
 

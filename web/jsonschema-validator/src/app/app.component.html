@@ -1,5 +1,10 @@
 <mat-toolbar color="primary">
   <span>{{ title }}</span>
+  <span class="toolbar-spacer"></span>
+  <app-schema-version-selector
+    [selectedVersion]="schemaVersion()"
+    (versionChange)="onSchemaVersionChange($event)">
+  </app-schema-version-selector>
 </mat-toolbar>
 
 <div class="app-container">
@@ -9,6 +14,7 @@
       <as-split-area [size]="50">
         <div class="editor-pane">
           <app-json-editor 
+            #jsonEditor
             [initialContent]="jsonInput()"
             (contentChange)="onJsonChange($event)">
           </app-json-editor>
@@ -27,17 +33,37 @@
 
   <!-- Validate Button Section -->
   <div class="action-section">
-    <button mat-raised-button color="primary" (click)="onValidate()" [disabled]="isValidating()">
-      {{ isValidating() ? 'Validating...' : 'Validate' }}
-    </button>
+    @if (isValidating()) {
+      <button 
+        mat-raised-button 
+        color="primary" 
+        class="validate-btn"
+        disabled>
+        <mat-icon class="spinning">sync</mat-icon>
+        Validating...
+      </button>
+    } @else {
+      <button 
+        mat-raised-button 
+        color="primary" 
+        class="validate-btn"
+        (click)="onValidate()">
+        <mat-icon>play_arrow</mat-icon>
+        Validate
+      </button>
+    }
+    <span class="keyboard-hint">Ctrl+Enter</span>
   </div>
 
   <!-- Results Section -->
   <div class="results-section">
-    <h3>Validation Results</h3>
-    <div class="results-placeholder">
-      <!-- ValidationResultComponent will be added in Story 3.4 -->
-      <p>Click "Validate" to see results</p>
-    </div>
+    <app-validation-result
+      [state]="validationState()"
+      [result]="validationResult()"
+      [errorMessage]="errorMessage()"
+      [schemaVersion]="schemaVersion()"
+      (errorClick)="onErrorClick($event)"
+      (retry)="onRetry()">
+    </app-validation-result>
   </div>
 </div>

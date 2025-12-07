@@ -1,0 +1,22 @@
+@if (errors.length > 0) {
+  <div class="error-list-container">
+    <table class="error-table">
+      <thead>
+        <tr>
+          <th class="col-path">Path</th>
+          <th class="col-keyword">Keyword</th>
+          <th class="col-message">Message</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (error of errors; track trackError($index, error)) {
+          <tr class="error-row" (click)="onErrorClick(error)">
+            <td class="col-path"><code>{{ error.dataPath }}</code></td>
+            <td class="col-keyword"><code>{{ error.keyword }}</code></td>
+            <td class="col-message">{{ error.message }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}

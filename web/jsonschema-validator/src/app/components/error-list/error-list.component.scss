@@ -1,0 +1,92 @@
+:host {
+  display: block;
+}
+
+// Error list container
+.error-list-container {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+// Error table
+.error-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+
+  thead {
+    background-color: #fafafa;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+
+    th {
+      padding: 8px 12px;
+      text-align: left;
+      font-weight: 500;
+      border-bottom: 1px solid #e0e0e0;
+    }
+  }
+
+  tbody {
+    .error-row {
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: #f5f5f5;
+      }
+
+      &:not(:last-child) {
+        td {
+          border-bottom: 1px solid #f0f0f0;
+        }
+      }
+
+      td {
+        padding: 8px 12px;
+        vertical-align: top;
+      }
+    }
+  }
+
+  .col-path {
+    width: 25%;
+    
+    code {
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 13px;
+      color: #1565c0;
+    }
+  }
+
+  .col-keyword {
+    width: 15%;
+
+    code {
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 13px;
+      color: #7b1fa2;
+    }
+  }
+
+  .col-message {
+    width: 60%;
+  }
+}
+
+// Highlight animation for error row click
+@keyframes highlight-flash {
+  0% {
+    background-color: #fff9c4;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.error-row.highlighted {
+  animation: highlight-flash 0.3s ease-out;
+}

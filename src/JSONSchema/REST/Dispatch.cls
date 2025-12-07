@@ -38,6 +38,9 @@ Parameter CONTENTTYPE = "application/json";
 /// Character set for all responses
 Parameter CHARSET = "utf-8";
 
+/// Enable built-in CORS support for cross-origin requests from Angular dev server
+Parameter HandleCorsRequest = 1;
+
 /// URL routing map
 XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
 {
@@ -159,10 +162,15 @@ ClassMethod Validate() As %Status
 /// Called before dispatch - set content type and CORS headers
 /// <p>
 /// Intercepts all requests to set common response headers.
+/// CORS headers must be set here to handle preflight OPTIONS requests.
 /// </p>
 ClassMethod OnPreDispatch(pUrl As %String, pMethod As %String, ByRef pContinue As %Boolean) As %Status
 {
     Set %response.ContentType = "application/json"
+    
+    // Set CORS headers for all requests (including OPTIONS preflight)
+    Do ..SetCORSHeaders()
+    
     Set pContinue = 1
     Quit $$$OK
 }

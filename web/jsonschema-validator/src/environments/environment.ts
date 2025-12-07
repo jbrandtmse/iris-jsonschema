@@ -1,4 +1,5 @@
 export const environment = {
   production: false,
-  apiBaseUrl: 'http://localhost:52773/api/jsonschema'
+  // Use relative URL - Angular dev server proxy forwards to IRIS
+  apiBaseUrl: '/api/jsonschema'
 };

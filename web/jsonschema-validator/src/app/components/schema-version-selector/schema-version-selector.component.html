@@ -1,0 +1,10 @@
+<mat-form-field appearance="outline" class="schema-version-selector">
+  <mat-label>Schema Version</mat-label>
+  <mat-select 
+    [value]="selectedVersion" 
+    (selectionChange)="onVersionChange($event.value)">
+    @for (option of schemaVersions; track option.value) {
+      <mat-option [value]="option.value">{{ option.label }}</mat-option>
+    }
+  </mat-select>
+</mat-form-field>

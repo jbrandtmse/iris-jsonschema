@@ -1,6 +1,55 @@
 <div class="validation-result-container">
-  <div class="placeholder-message" *ngIf="!hasResults">
-    <p>Click "Validate" to see results</p>
-  </div>
-  <!-- Results will be displayed here in Story 3.4 -->
+  <!-- Ready State -->
+  @if (state === 'ready') {
+    <div class="result-message ready">
+      <p>Ready to validate - click Validate button or press Ctrl+Enter</p>
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (state === 'loading') {
+    <div class="result-message loading">
+      <mat-spinner diameter="24"></mat-spinner>
+      <span>Validating...</span>
+    </div>
+  }
+
+  <!-- Valid State -->
+  @if (state === 'valid') {
+    <div class="result-badge valid">
+      <mat-icon>check_circle</mat-icon>
+      <span class="badge-text">✓ Valid</span>
+      <span class="schema-info">JSON data conforms to schema ({{ schemaVersion }})</span>
+    </div>
+  }
+
+  <!-- Invalid State -->
+  @if (state === 'invalid') {
+    <div class="result-badge invalid">
+      <mat-icon>cancel</mat-icon>
+      <span class="badge-text">✗ Invalid</span>
+      <span class="error-count">({{ errorCount }} {{ errorCount === 1 ? 'error' : 'errors' }})</span>
+    </div>
+
+    <!-- Error List -->
+    <app-error-list 
+      [errors]="errors" 
+      (errorClick)="onErrorClick($event)">
+    </app-error-list>
+  }
+
+  <!-- Error State (API/Network Error) -->
+  @if (state === 'error') {
+    <div class="result-badge error">
+      <mat-icon>warning</mat-icon>
+      <span class="badge-text">Error</span>
+    </div>
+    <div class="error-details">
+      <p class="error-message">{{ errorMessage }}</p>
+      <button mat-stroked-button color="primary" (click)="onRetry()">
+        <mat-icon>refresh</mat-icon>
+        Retry
+      </button>
+    </div>
+  }
 </div>

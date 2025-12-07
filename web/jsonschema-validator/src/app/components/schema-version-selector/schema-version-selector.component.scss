@@ -1,0 +1,25 @@
+:host {
+  display: inline-block;
+}
+
+.schema-version-selector {
+  // Compact display for header bar
+  width: 140px;
+  
+  // Reduce vertical spacing for header placement
+  ::ng-deep {
+    .mat-mdc-form-field-subscript-wrapper {
+      display: none;
+    }
+    
+    .mat-mdc-text-field-wrapper {
+      padding-bottom: 0;
+    }
+    
+    .mat-mdc-form-field-infix {
+      padding-top: 8px;
+      padding-bottom: 8px;
+      min-height: 40px;
+    }
+  }
+}

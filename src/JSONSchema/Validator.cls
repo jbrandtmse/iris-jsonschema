@@ -6,8 +6,19 @@
 /// <p>
 /// <b>Supported Versions:</b>
 /// <ul>
-/// <li>JSON Schema Draft 7</li>
+/// <li>JSON Schema Draft 7 (default)</li>
+/// <li>JSON Schema 2020-12</li>
 /// </ul>
+/// </p>
+/// <p>
+/// <b>JSON Schema 2020-12 Limitations:</b><br/>
+/// The following 2020-12 features are NOT supported in this version:
+/// <ul>
+/// <li><b>$dynamicRef and $dynamicAnchor:</b> Dynamic reference resolution not implemented</li>
+/// <li><b>Vocabulary declarations:</b> Custom vocabulary support not implemented</li>
+/// <li><b>unevaluatedProperties and unevaluatedItems:</b> Not implemented (use additionalProperties/items instead)</li>
+/// </ul>
+/// Supported 2020-12 features: $defs, prefixItems, version-aware items keyword behavior
 /// </p>
 /// <p>
 /// <b>Input Formats Supported:</b>
@@ -65,9 +76,9 @@ Class JSONSchema.Validator Extends %RegisteredObject
 /// @param pJSON The JSON data to validate (multiple formats supported)
 /// @param pSchema The JSON Schema to validate against (multiple formats supported)
 /// @param pErrors Output parameter receiving %DynamicArray of error objects
-/// @param pSchemaVersion Schema version to use (default: "draft-07")
+/// @param pSchemaVersion Schema version to use (default: "" for auto-detection, otherwise "draft-07" or "2020-12")
 /// @return 1 if validation passes, 0 if validation fails
-ClassMethod Validate(pJSON, pSchema, Output pErrors As %DynamicArray, pSchemaVersion As %String = "draft-07") As %Boolean
+ClassMethod Validate(pJSON, pSchema, Output pErrors As %DynamicArray, pSchemaVersion As %String = "") As %Boolean
 {
     Set tResult = 1
     Set pErrors = ##class(%DynamicArray).%New()
@@ -117,8 +128,27 @@ ClassMethod Validate(pJSON, pSchema, Output pErrors As %DynamicArray, pSchemaVer
             Quit
         }
         
+        // Determine schema version (detect from $schema or use explicit parameter)
+        Set tVersion = pSchemaVersion
+        If tVersion = "" {
+            // No explicit version provided - detect from schema
+            Set tVersion = ..DetectSchemaVersion(tSchema)
+        }
+        
+        // Validate schema version
+        If (tVersion '= "draft-07") && (tVersion '= "2020-12") {
+            Set tError = ##class(%DynamicObject).%New()
+            Set tError.keyword = "$schemaVersion"
+            Set tError.dataPath = "#"
+            Set tError.schemaPath = "#"
+            Set tError.message = "Unsupported schema version '" _ tVersion _ "'. Supported versions: draft-07, 2020-12"
+            Do pErrors.%Push(tError)
+            Set tResult = 0
+            Quit
+        }
+        
         // Create validation context
-        Set tContext = ##class(JSONSchema.Context).%New(pSchemaVersion)
+        Set tContext = ##class(JSONSchema.Context).%New(tVersion)
         Set tContext.RootSchema = tSchema
         
         // Perform validation
@@ -139,6 +169,47 @@ ClassMethod Validate(pJSON, pSchema, Output pErrors As %DynamicArray, pSchemaVer
         Do pErrors.%Push(tError)
     }
     Quit tResult
+}
+
+/// Detect schema version from $schema keyword
+/// <p>
+/// Examines the $schema keyword in a schema to determine the JSON Schema version.
+/// Returns "draft-07" as default if $schema is not present or cannot be determined.
+/// </p>
+/// <p>
+/// <b>Recognized $schema URIs:</b>
+/// <ul>
+/// <li>http://json-schema.org/draft-07/schema# → "draft-07"</li>
+/// <li>https://json-schema.org/draft/2020-12/schema → "2020-12"</li>
+/// </ul>
+/// </p>
+/// @param pSchema The schema object to examine
+/// @return Schema version string ("draft-07" or "2020-12")
+ClassMethod DetectSchemaVersion(pSchema As %DynamicObject) As %String
+{
+    Set tVersion = "draft-07"
+    
+    Try {
+        // Only check if schema is an object (boolean schemas have no $schema)
+        If $IsObject(pSchema) && pSchema.%IsDefined("$schema") {
+            Set tSchemaUri = pSchema.%Get("$schema")
+            
+            // Check for 2020-12 version indicators
+            If tSchemaUri [ "2020-12" {
+                Set tVersion = "2020-12"
+            }
+            // Check for draft-07 (explicitly, though it's already the default)
+            ElseIf tSchemaUri [ "draft-07" {
+                Set tVersion = "draft-07"
+            }
+        }
+        Quit
+    }
+    Catch ex {
+        // Ignore errors, return default version
+    }
+    
+    Quit tVersion
 }
 
 /// Validate a single node of JSON data against a schema
@@ -431,62 +502,121 @@ ClassMethod ValidateNode(pData, pSchema, pContext As JSONSchema.Context) As %Boo
                 Set tValid = tValid && tContainsValid
             }
             
-            // Check items
-            If $IsObject(pSchema) && pSchema.%IsDefined("items") {
-                Set tItemsSchema = pSchema.items
+            // Version-specific array item validation (prefixItems/items)
+            // JSON Schema 2020-12: Uses prefixItems for positional validation, items for additional items
+            // JSON Schema Draft 7: Uses items array for tuple validation, additionalItems for extra items
+            // See: https://json-schema.org/understanding-json-schema/reference/array.html
+            
+            If pContext.SchemaVersion = "2020-12" {
+                // JSON Schema 2020-12 mode
+                Set tDataLen = pData.%Size()
+                Set tPrefixLen = 0
                 
-                If $IsObject(tItemsSchema) && tItemsSchema.%IsA("%Library.DynamicArray") {
-                    // Tuple validation - items is array of schemas
-                    Set tTupleLen = tItemsSchema.%Size()
-                    Set tDataLen = pData.%Size()
+                // Check prefixItems (positional validation in 2020-12)
+                If $IsObject(pSchema) && pSchema.%IsDefined("prefixItems") {
+                    Set tPrefixItems = pSchema.prefixItems
+                    If $IsObject(tPrefixItems) && tPrefixItems.%IsA("%Library.DynamicArray") {
+                        Set tPrefixLen = tPrefixItems.%Size()
+                        
+                        // Validate each position against corresponding prefixItems schema
+                        For tIdx = 0:1:(tPrefixLen - 1) {
+                            If tIdx < tDataLen {
+                                Set tItemValue = pData.%Get(tIdx)
+                                Set tItemSchema = tPrefixItems.%Get(tIdx)
+                                Do pContext.PushDataPath(tIdx)
+                                Set tSourceType = pData.%GetTypeOf(tIdx)
+                                Set tItemValid = ..ValidateNodeWithType(tItemValue, tItemSchema, pContext, tSourceType)
+                                Do pContext.PopDataPath()
+                                Set tValid = tValid && tItemValid
+                            }
+                        }
+                    }
+                }
+                
+                // Check items (applies to items after prefixItems in 2020-12)
+                If $IsObject(pSchema) && pSchema.%IsDefined("items") {
+                    Set tItemsSchema = pSchema.items
                     
-                    // Validate each position against corresponding schema
-                    For tIdx = 0:1:(tTupleLen - 1) {
-                        If tIdx < tDataLen {
+                    // In 2020-12, items is always a single schema (not an array)
+                    // It applies to all items after prefixItems (or all items if no prefixItems)
+                    If $IsObject(tItemsSchema) {
+                        // Validate items starting from prefixLen
+                        For tIdx = tPrefixLen:1:(tDataLen - 1) {
                             Set tItemValue = pData.%Get(tIdx)
-                            Set tItemSchema = tItemsSchema.%Get(tIdx)
                             Do pContext.PushDataPath(tIdx)
-                            // Pass source type info for correct boolean handling
                             Set tSourceType = pData.%GetTypeOf(tIdx)
-                            Set tItemValid = ..ValidateNodeWithType(tItemValue, tItemSchema, pContext, tSourceType)
+                            Set tItemValid = ..ValidateNodeWithType(tItemValue, tItemsSchema, pContext, tSourceType)
                             Do pContext.PopDataPath()
                             Set tValid = tValid && tItemValid
                         }
                     }
-                    
-                    // Check additionalItems (only applies to tuple validation)
-                    If pSchema.%IsDefined("additionalItems") && (tDataLen > tTupleLen) {
-                        Set tAdditionalSchema = pSchema.additionalItems
-                        
-                        If tAdditionalSchema = 0 || (tAdditionalSchema = "false") {
-                            // additionalItems: false - reject extra items
-                            Set tMessage = "Array has " _ tDataLen _ " items but only " _ tTupleLen _ " are allowed"
-                            Do pContext.AddError("additionalItems", tMessage)
+                    ElseIf tItemsSchema = 0 || (tItemsSchema = "false") {
+                        // items: false - no additional items allowed
+                        If tDataLen > tPrefixLen {
+                            Set tMessage = "Array has " _ tDataLen _ " items but only " _ tPrefixLen _ " are allowed"
+                            Do pContext.AddError("items", tMessage)
                             Set tValid = 0
                         }
-                        ElseIf $IsObject(tAdditionalSchema) {
-                            // additionalItems: {schema} - validate extra items
-                            For tIdx = tTupleLen:1:(tDataLen - 1) {
+                    }
+                    // items: true or missing - allow additional items
+                }
+            }
+            Else {
+                // Draft 7 mode (original behavior)
+                If $IsObject(pSchema) && pSchema.%IsDefined("items") {
+                    Set tItemsSchema = pSchema.items
+                    
+                    If $IsObject(tItemsSchema) && tItemsSchema.%IsA("%Library.DynamicArray") {
+                        // Tuple validation - items is array of schemas (Draft 7)
+                        Set tTupleLen = tItemsSchema.%Size()
+                        Set tDataLen = pData.%Size()
+                        
+                        // Validate each position against corresponding schema
+                        For tIdx = 0:1:(tTupleLen - 1) {
+                            If tIdx < tDataLen {
                                 Set tItemValue = pData.%Get(tIdx)
+                                Set tItemSchema = tItemsSchema.%Get(tIdx)
                                 Do pContext.PushDataPath(tIdx)
-                                Set tAddValid = ..ValidateNode(tItemValue, tAdditionalSchema, pContext)
+                                Set tSourceType = pData.%GetTypeOf(tIdx)
+                                Set tItemValid = ..ValidateNodeWithType(tItemValue, tItemSchema, pContext, tSourceType)
                                 Do pContext.PopDataPath()
-                                Set tValid = tValid && tAddValid
+                                Set tValid = tValid && tItemValid
                             }
                         }
-                        // additionalItems: true - allow without validation
+                        
+                        // Check additionalItems (only applies to tuple validation in Draft 7)
+                        If pSchema.%IsDefined("additionalItems") && (tDataLen > tTupleLen) {
+                            Set tAdditionalSchema = pSchema.additionalItems
+                            
+                            If tAdditionalSchema = 0 || (tAdditionalSchema = "false") {
+                                // additionalItems: false - reject extra items
+                                Set tMessage = "Array has " _ tDataLen _ " items but only " _ tTupleLen _ " are allowed"
+                                Do pContext.AddError("additionalItems", tMessage)
+                                Set tValid = 0
+                            }
+                            ElseIf $IsObject(tAdditionalSchema) {
+                                // additionalItems: {schema} - validate extra items
+                                For tIdx = tTupleLen:1:(tDataLen - 1) {
+                                    Set tItemValue = pData.%Get(tIdx)
+                                    Do pContext.PushDataPath(tIdx)
+                                    Set tAddValid = ..ValidateNode(tItemValue, tAdditionalSchema, pContext)
+                                    Do pContext.PopDataPath()
+                                    Set tValid = tValid && tAddValid
+                                }
+                            }
+                            // additionalItems: true - allow without validation
+                        }
                     }
-                }
-                ElseIf $IsObject(tItemsSchema) {
-                    // Single schema - all items must match
-                    Set tIter = pData.%GetIterator()
-                    While tIter.%GetNext(.tIdx, .tItemValue) {
-                        Do pContext.PushDataPath(tIdx)
-                        // Pass source type info for correct boolean handling
-                        Set tSourceType = pData.%GetTypeOf(tIdx)
-                        Set tItemValid = ..ValidateNodeWithType(tItemValue, tItemsSchema, pContext, tSourceType)
-                        Do pContext.PopDataPath()
-                        Set tValid = tValid && tItemValid
+                    ElseIf $IsObject(tItemsSchema) {
+                        // Single schema - all items must match (Draft 7)
+                        Set tIter = pData.%GetIterator()
+                        While tIter.%GetNext(.tIdx, .tItemValue) {
+                            Do pContext.PushDataPath(tIdx)
+                            Set tSourceType = pData.%GetTypeOf(tIdx)
+                            Set tItemValid = ..ValidateNodeWithType(tItemValue, tItemsSchema, pContext, tSourceType)
+                            Do pContext.PopDataPath()
+                            Set tValid = tValid && tItemValid
+                        }
                     }
                 }
             }

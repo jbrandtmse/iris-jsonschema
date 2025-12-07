@@ -1,19 +1,25 @@
 # IRIS JSON Schema Validator
 
-A JSON Schema Draft-07 validator implemented in InterSystems ObjectScript for IRIS.
+A JSON Schema validator for Draft-07 and 2020-12 implemented in InterSystems ObjectScript for IRIS.
+
+**Contest Submission**: Created for submission to the InterSystems "Bringing Ideas to Reality" Contest 2025 ([contest details](https://openexchange.intersystems.com/contest/44)). Submitted in response to: https://ideas.intersystems.com/ideas/DPI-I-769
 
 ## Overview
 
-This project provides a native ObjectScript implementation of JSON Schema validation, enabling IRIS developers to validate JSON data against JSON Schema specifications directly within their IRIS applications.
+This project provides a native ObjectScript implementation of JSON Schema validation, enabling IRIS developers to validate JSON data against JSON Schema Draft-07 and 2020-12 specifications directly within their IRIS applications.
 
 ## Features
 
-- **JSON Schema Draft-07 Support** - Complete implementation of the JSON Schema Draft-07 specification
+- **JSON Schema Draft-07 & 2020-12 Support** - Complete implementation of JSON Schema Draft-07 and 2020-12 specifications
+  - Automatic version detection from `$schema` keyword
+  - Explicit version override via parameter
+  - Draft-07: Full support for all keywords including definitions, items array, additionalItems
+  - 2020-12: Support for $defs, prefixItems, version-aware items behavior
 - **Native ObjectScript** - No external dependencies, runs entirely within IRIS
 - **Comprehensive Type Validation** - Supports all JSON types (string, number, integer, boolean, null, array, object)
 - **Schema Composition** - Full support for allOf, anyOf, oneOf, not combinators
 - **Conditional Schemas** - if/then/else and dependencies support
-- **Schema References** - $ref resolution for internal and remote references
+- **Schema References** - $ref resolution for internal and remote references (both #/definitions and #/$defs)
 - **Detailed Error Reporting** - Returns structured error objects with keyword, path, and message information
 
 ## Installation
@@ -157,7 +163,9 @@ iris-jsonschema/
 │       ├── TestArrayKeywords.cls    # Array keyword tests
 │       ├── TestCombinators.cls      # Schema combinator tests
 │       ├── TestConditional.cls      # Conditional schema tests
-│       └── TestRefKeyword.cls       # $ref keyword tests
+│       ├── TestRefKeyword.cls       # $ref keyword tests
+│       ├── TestRESTEndpoint.cls     # REST API tests
+│       └── Test2020Keywords.cls     # JSON Schema 2020-12 tests
 ├── docs/                      # Documentation
 │   ├── stories/               # User stories
 │   ├── qa/                    # QA gates and assessments
@@ -191,7 +199,8 @@ iris-jsonschema/
 - ✅ Story 3.2: Angular Project Foundation
 - ✅ Story 3.3: JSON and Schema Editors
 - ✅ Story 3.4: Validation Integration and Results Display
-- 🔜 Story 3.5: Production Build and Deployment
+- ✅ Story 3.5: JSON Schema 2020-12 Support ($defs, prefixItems, version detection)
+- 🔜 Story 3.6: Production Build and Deployment
 
 ## Web Application UI
 
@@ -379,7 +388,7 @@ Run the unit tests using IRIS terminal:
 Do ##class(%UnitTest.Manager).RunTest("Test.JSONSchema")
 ```
 
-**Current test coverage: 303 tests, all passing.**
+**Current test coverage: 317 tests, all passing.**
 
 ## Requirements
 
